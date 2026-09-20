@@ -39,6 +39,7 @@ references merely to select a domain. No separate `$jev` invocation is needed.
 | Explicit product initiative needing specification and milestones, or an active develop dossier. A routine feature, plan, or implementation alone does not qualify. | [`develop-z80`](../develop-z80/SKILL.md) |
 | Create, restructure, review, or synchronize public repository documentation, including one README. | [`document-z80`](../document-z80/SKILL.md) |
 | Diagnose, or diagnose and repair, one observed failure with unresolved causality, conflicting evidence, or a failed evidence-supported fix. Includes regression against a known baseline. | [`debug-z80`](../debug-z80/SKILL.md) |
+| Reproduce, inspect, or verify live Timex Sinclair 2068 ROM behavior through ZEsarUX/ZRCP, including registers, memory, paging, traces, keyboard input, breakpoints, watchpoints, screen state, or border-color verdicts. | [`ts2068-debug`](../ts2068-debug/SKILL.md) |
 | Preventive or broad read-only correctness audit: ABI, ISR, memory, firmware, toolchain, or hardware risks, without one failure driving the investigation. | [`audit-z80`](../audit-z80/SKILL.md) |
 | Map or reorganize ownership, dependencies, modules, source layout, banks, overlays, or runtime placement. | [`organize-z80`](../organize-z80/SKILL.md) |
 | Size or memory footprint is the sole acceptance metric; prove net byte savings. | [`shrink-z80`](../shrink-z80/SKILL.md) |
@@ -49,6 +50,9 @@ references merely to select a domain. No separate `$jev` invocation is needed.
 products follow the product/workflow rows; changes to the cartridge pipeline
 itself follow their engineering outcome, not the consumer-port route.
 Unresolved Z80 failures use `debug-z80` rather than a generic debugging workflow.
+When a TS2068 failure needs live emulator evidence, `ts2068-debug` is the
+runtime tool route; use `debug-z80` for the wider causal contract when runtime
+control is not the primary requested outcome.
 
 ## Handoff
 

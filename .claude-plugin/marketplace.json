@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "z80-skills-local",
+  "description": "Local-only Claude Code packaging shim for IgnacioMonge/z80-skills (upstream ships Codex/Gemini plugin manifests but no .claude-plugin/marketplace.json, so it can't be added directly). Not affiliated with the upstream project.",
+  "owner": {
+    "name": "M. Ignacio Monge García"
+  },
+  "plugins": [
+    {
+      "name": "z80-skills",
+      "description": "Standalone adaptive workflow, thin Z80 routing, TS2068 runtime debugging, BridgeZX delivery, and specialist development, documentation, porting, debugging, audit, organization, size, and optimization skills.",
+      "author": {
+        "name": "M. Ignacio Monge García"
+      },
+      "source": "./",
+      "homepage": "https://github.com/IgnacioMonge/z80-skills"
+    }
+  ]
+}

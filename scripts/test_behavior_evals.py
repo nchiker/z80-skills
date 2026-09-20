@@ -65,6 +65,7 @@ class BehaviorEvalTest(unittest.TestCase):
                 "port-spectranext",
                 "develop-z80",
                 "debug-z80",
+                "ts2068-debug",
                 "audit-z80",
                 "organize-z80",
                 "shrink-z80",

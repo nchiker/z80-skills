@@ -1,0 +1,6 @@
+interface:
+  display_name: "TS2068 Debug"
+  short_description: "Debug TS2068 ROMs through ZEsarUX ZRCP"
+  default_prompt: "Use $ts2068-debug to reproduce and inspect this TS2068 ROM behavior with bounded runtime evidence."
+policy:
+  allow_implicit_invocation: false

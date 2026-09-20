@@ -1,6 +1,6 @@
 # Project Overview
 
-Z80 Skills is a Codex plugin with eight complementary engineering skills for
+Z80 Skills is a Codex plugin with nine complementary engineering skills for
 Z80 and ZX Spectrum projects written in assembly, C, or mixed C/ASM with z88dk
 or SDCC, one BridgeZX delivery skill, a thin domain selector, and a shared
 adaptive workflow core.
@@ -15,7 +15,7 @@ Skill responsibilities and entry points are listed in the
 
 Domain selection and execution effort are separate decisions: `route-z80`
 chooses the contract, while `workflow` chooses the smallest sufficient route.
-Only the router participates in implicit Z80-domain selection; the nine routed
+Only the router participates in implicit Z80-domain selection; the ten routed
 skills are explicit-only and are loaded individually after routing. Ambiguity is
 not required for the router to hand an unqualified request to one specialist.
 

@@ -3,7 +3,7 @@
 **Idiomas:** [English](README.md) · Español
 
 Plugin para Codex con un workflow adaptativo independiente, un selector de
-dominio ligero, ocho skills complementarios de ingeniería y envío protegido
+dominio ligero, nueve skills complementarios de ingeniería y envío protegido
 mediante BridgeZX para proyectos Z80, especialmente software de ZX Spectrum
 escrito en ensamblador, C o una mezcla de ambos con z88dk o SDCC.
 
@@ -42,6 +42,7 @@ hipótesis.
 | [document-z80](skills/document-z80/SKILL.md) | ¿Cómo estructurar la documentación pública del repositorio y mantenerla correcta entre idiomas? | README y jerarquía documental basados en evidencia, con comandos, requisitos de hardware y paridad EN/ES verificados. |
 | [port-spectranext](skills/port-spectranext/SKILL.md) | ¿Cómo atraviesa un programa ZX existente el pipeline consumidor del cartucho Spectranext? | Intake canónico, implementación acotada, gates ligados a artefactos, evidencia física y handoff final. |
 | [debug-z80](skills/debug-z80/SKILL.md) | ¿Qué causa este fallo observado y qué componente posee la corrección? | Una explicación causal falsable y, cuando se solicita, un fix de causa raíz verificado. |
+| [ts2068-debug](skills/ts2068-debug/SKILL.md) | ¿Qué hace realmente esta ROM TS2068 durante su ejecución? | Ejecución acotada mediante ZEsarUX/ZRCP con evidencia de registros, memoria, paginación, trazas, entrada, pantalla y break/watchpoints. |
 | [audit-z80](skills/audit-z80/SKILL.md) | ¿Hay defectos latentes o riesgos amplios de corrección? | Hallazgos de solo lectura priorizados por severidad y confianza, con evidencia, verificación y riesgo residual. |
 | [organize-z80](skills/organize-z80/SKILL.md) | ¿Qué fronteras de propiedad, dependencias, fuentes y placement necesitan cambiar? | Mapa proporcional, diseño, slice reversible o decisión explícita de no cambiar. |
 | [shrink-z80](skills/shrink-z80/SKILL.md) | ¿Cómo reducir almacenamiento, tamaño enlazado, memoria residente, BSS/stack, bancos u overlays? | Reducciones netas clasificadas por seguridad y por calidad de la evidencia. |
@@ -63,6 +64,8 @@ Los skills enrutados se solapan solo donde es útil:
 - Usa `port-spectranext` para portar un programa ZX existente al cartucho
   Spectranext, no para targets ZX Spectrum Next ni trabajo sobre el backend.
 - Usa `debug-z80` para un fallo observado cuyo owner causal sigue sin conocerse.
+- Usa `ts2068-debug` cuando una ROM TS2068 necesita reproducción, inspección,
+  interacción o verificación runtime mediante ZEsarUX/ZRCP.
 - Usa `audit-z80` para revisión preventiva o amplia de corrección en solo lectura.
 - Usa `organize-z80` para mapear o mejorar con seguridad propiedad, dependencias, layout de fuentes y placement en runtime.
 - Usa `shrink-z80` para una búsqueda exhaustiva centrada exclusivamente en
@@ -192,7 +195,7 @@ normalizadas; nunca deben subir código privado ni identificadores del proyecto.
 ### Primera instalación
 
 Clona el repositorio en cualquier ubicación bajo tu directorio personal. El
-checkout es la fuente canónica de los once skills.
+checkout es la fuente canónica de los doce skills.
 
 ```sh
 git clone https://github.com/IgnacioMonge/z80-skills.git ~/plugins/z80-skills
@@ -209,18 +212,18 @@ ningún skill incluido bajo `~/.agents/skills/<skill-name>` ni en la ruta
 heredada `~/.codex/skills/<skill-name>`. Esas copias pueden ocultar el plugin
 con namespace y omitir archivos del paquete como `scripts/run_in_worktree.py`;
 copiar directorios individuales desde `skills/` no constituye una instalación
-completa. El plugin ya incluye los once skills, incluidos `route-z80` y
+completa. El plugin ya incluye los doce skills, incluidos `route-z80` y
 `workflow`. El instalador avisa si encuentra una de estas
 ubicaciones duplicadas; muévela o desactívala antes de abrir una tarea nueva de
 Codex.
 
-Solo `route-z80` participa en la selección implícita de dominio Z80. Los nueve
+Solo `route-z80` participa en la selección implícita de dominio Z80. Los diez
 skills enrutados siguen disponibles mediante invocación explícita de
 `$send-bridgezx`, `$develop-z80`, `$document-z80`, `$port-spectranext`,
-`$debug-z80`, `$audit-z80`, `$organize-z80`, `$shrink-z80` y `$optimize-z80`;
+`$debug-z80`, `$ts2068-debug`, `$audit-z80`, `$organize-z80`, `$shrink-z80` y `$optimize-z80`;
 después de decidir, `route-z80` carga únicamente el hermano seleccionado. Así el
 router también cubre peticiones inequívocas en lenguaje natural, mientras el
-trabajo ordinario permanece en `workflow` y no se inyectan las nueve descripciones
+trabajo ordinario permanece en `workflow` y no se inyectan las diez descripciones
 especialistas.
 
 Abre una tarea nueva de Codex después de instalar: el catálogo de skills se
@@ -242,7 +245,7 @@ para que Codex cree una copia instalada nueva. No edites directamente
 
 ### Grok Build
 
-Grok Build lee este checkout en el sitio. No copies los once skills a
+Grok Build lee este checkout en el sitio. No copies los doce skills a
 `~/.grok/skills` ni a `~/.claude/skills`; esas copias se quedan obsoletas.
 
 ```powershell
@@ -250,7 +253,7 @@ pwsh -File .\scripts\install-for-grok.ps1
 ```
 
 El instalador añade `<repo>/skills` a `~/.grok/config.toml` `[skills].paths`
-y borra las copias obsoletas de los once skills del paquete en `~/.grok/skills`
+y borra las copias obsoletas de los doce skills del paquete en `~/.grok/skills`
 y `~/.claude/skills`. Los skills personales ajenos a este repositorio no se
 tocan. Tras un `git pull`, Grok ya ve los árboles actualizados; abre una tarea
 nueva para recargar el catálogo.
@@ -312,6 +315,14 @@ consumidor y detente para obtener evidencia del hardware real cuando proceda.
 Usa debug-z80 para aislar por qué este build 128K falla al volver de la ISR. No
 edites hasta que un check discriminante identifique el owner causal; entonces
 aplica y verifica el fix mínimo.
+```
+
+### Depuración runtime de TS2068
+
+```text
+Usa ts2068-debug para reproducir este bloqueo de ROM en ZEsarUX, determinar si
+la CPU está en una espera normal de teclado y capturar PC, registros, traza y
+estado de paginación con ejecución acotada.
 ```
 
 ### Auditoría
@@ -391,6 +402,8 @@ configuración y receta deben pertenecer a la misma línea base.
   autorizado y los resultados físicos exigen observación explícita del usuario.
 - `debug-z80` mantiene diagnóstico y fixes candidatos en un worktree desechable;
   solo edita el árbol principal para una reparación solicitada y causalmente probada.
+- `ts2068-debug` usa ejecución acotada y estado/puertos aislados para sesiones
+  ZEsarUX concurrentes; requiere el CLI externo `ts2068-debug`.
 - `document-z80` edita solo la documentación pública para personas incluida en
   el alcance; no cambia código, configuración de build, releases ni instrucciones
   de agentes.

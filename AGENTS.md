@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Z80 Skills is a Codex plugin: portable workflow, Z80 router, eight engineering
+Z80 Skills is a Codex plugin: portable workflow, Z80 router, nine engineering
 specialists, and one BridgeZX delivery skill. `skills/workflow/` is canonical;
 do not duplicate its routes in repository-local documents.
 

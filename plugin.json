@@ -1,7 +1,7 @@
 {
   "name": "z80-skills",
-  "version": "0.9.0",
-  "description": "Standalone adaptive workflow, thin Z80 routing, BridgeZX delivery, and specialist development, documentation, porting, debugging, audit, organization, size, and optimization skills.",
+  "version": "0.9.1",
+  "description": "Standalone adaptive workflow, thin Z80 routing, TS2068 runtime debugging, BridgeZX delivery, and specialist development, documentation, porting, debugging, audit, organization, size, and optimization skills.",
   "author": {
     "name": "M. Ignacio Monge Garc\u00eda"
   },
@@ -17,6 +17,8 @@
     "product-development",
     "implementation",
     "root-cause-debugging",
+    "ts2068",
+    "zesarux",
     "audit",
     "workflow",
     "routing",
@@ -36,7 +38,7 @@
   "interface": {
     "displayName": "Z80 Skills + Workflow",
     "shortDescription": "Adaptive workflow for Z80",
-    "longDescription": "Bundles an independent workflow, a thin Z80 domain selector, eight engineering specialists including repository documentation, and guarded BridgeZX delivery. Routing separates documentation, file transfer, Spectranext consumer ports, unresolved failures, audits, known-cause fixes, and other domain work; workflow chooses engineering effort.",
+    "longDescription": "Bundles an independent workflow, a thin Z80 domain selector, nine engineering specialists including TS2068 runtime debugging and repository documentation, and guarded BridgeZX delivery. Routing separates live TS2068 inspection, documentation, file transfer, Spectranext consumer ports, unresolved failures, audits, known-cause fixes, and other domain work; workflow chooses engineering effort.",
     "developerName": "M. Ignacio Monge Garc\u00eda",
     "websiteURL": "https://github.com/IgnacioMonge/z80-skills",
     "category": "Productivity",
@@ -56,7 +58,7 @@
     "brandColor": "#2F855A",
     "defaultPrompt": [
       "Use $route-z80 to choose the right specialist for this Z80 repository request, then continue with that route.",
-      "Use $debug-z80 to isolate and repair the unknown cause of this observed Z80 failure.",
+      "Use $ts2068-debug to reproduce and inspect this TS2068 ROM behavior in ZEsarUX.",
       "Use $send-bridgezx to send build/game.nex to my Spectrum Next using the last BridgeZX IP."
     ]
   }

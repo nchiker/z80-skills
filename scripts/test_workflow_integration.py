@@ -21,7 +21,7 @@ Z80_DOMAIN_SKILLS = (
     "shrink-z80",
     "optimize-z80",
 )
-Z80_OPERATION_SKILLS = ("send-bridgezx",)
+Z80_OPERATION_SKILLS = ("send-bridgezx", "ts2068-debug")
 Z80_ROUTED_SKILLS = (*Z80_OPERATION_SKILLS, *Z80_DOMAIN_SKILLS)
 Z80_SKILLS = ("route-z80", *Z80_ROUTED_SKILLS)
 ALL_SKILLS = (*Z80_SKILLS, "workflow")

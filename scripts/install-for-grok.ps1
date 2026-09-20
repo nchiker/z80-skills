@@ -9,7 +9,7 @@
 
   This script:
     1. Adds <repo>/skills to Grok's extra skill paths
-    2. Removes obsolete copies of the eleven bundled skills from
+    2. Removes obsolete copies of the twelve bundled skills from
        ~/.grok/skills (and ~/.claude/skills unless -SkipClaudeCleanup)
     3. Leaves unrelated personal skills untouched
 
@@ -61,6 +61,7 @@ $SkillNames = @(
     "route-z80",
     "send-bridgezx",
     "shrink-z80",
+    "ts2068-debug",
     "workflow"
 )
 
@@ -231,7 +232,7 @@ foreach ($name in $SkillNames) {
 }
 
 Write-Host ""
-Write-Host "Done. Grok reads the eleven skills from:" -ForegroundColor Green
+Write-Host "Done. Grok reads the twelve skills from:" -ForegroundColor Green
 Write-Host "  $tomlPath"
 Write-Host "Open a new Grok task so the catalog reloads."
 Write-Host ""

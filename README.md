@@ -3,7 +3,7 @@
 **Languages:** English · [Español](README.es.md)
 
 Codex plugin with one standalone adaptive workflow, one thin domain selector,
-eight complementary engineering skills, and guarded BridgeZX file delivery for
+nine complementary engineering skills, and guarded BridgeZX file delivery for
 Z80 projects, especially ZX Spectrum software written in assembly, C, or a
 mixture of both using z88dk or SDCC.
 
@@ -41,6 +41,7 @@ clearly distinguish proven evidence, estimates, and hypotheses.
 | [document-z80](skills/document-z80/SKILL.md) | How should this repository's public documentation be structured and kept accurate across languages? | An evidence-grounded README and documentation hierarchy with verified commands, hardware requirements, and EN/ES parity. |
 | [port-spectranext](skills/port-spectranext/SKILL.md) | How does an existing ZX program move through the Spectranext cartridge's consumer pipeline? | Canonical intake, bounded implementation, artifact-bound gates, physical evidence, and final handoff. |
 | [debug-z80](skills/debug-z80/SKILL.md) | What causes this observed failure, and which component owns the repair? | One falsifiable causal explanation and, when requested, one verified root-cause fix. |
+| [ts2068-debug](skills/ts2068-debug/SKILL.md) | What does this TS2068 ROM actually do while running? | Bounded ZEsarUX/ZRCP execution with registers, memory, paging, traces, input, screen state, and break/watchpoint evidence. |
 | [audit-z80](skills/audit-z80/SKILL.md) | Are there latent defects or broad correctness risks? | Read-only findings prioritized by severity and confidence, with evidence, verification, and residual risk. |
 | [organize-z80](skills/organize-z80/SKILL.md) | Which ownership, dependency, source, and runtime-placement boundaries need a change? | Proportional map, design, reversible migration slice, or explicit no-change decision. |
 | [shrink-z80](skills/shrink-z80/SKILL.md) | How can storage, linked size, resident memory, BSS/stack, banks, or overlays be reduced? | Net reductions classified by safety and quality of evidence. |
@@ -62,6 +63,8 @@ useful:
 - Use `port-spectranext` for an existing ZX program's consumer port to the
   Spectranext cartridge, not for ZX Spectrum Next targets or backend work.
 - Use `debug-z80` for an observed failure whose causal owner remains unknown.
+- Use `ts2068-debug` when a TS2068 ROM needs live ZEsarUX/ZRCP reproduction,
+  inspection, interaction, or runtime verification.
 - Use `audit-z80` for preventive or broad read-only correctness review.
 - Use `organize-z80` to map or safely improve ownership, dependencies, source layout, and runtime placement.
 - Use `shrink-z80` for an exhaustive search focused exclusively on size.
@@ -186,7 +189,7 @@ they must never upload private code or project identifiers.
 ### Initial installation
 
 Clone the repository anywhere under your home directory. The checkout is the
-canonical source for all eleven skills.
+canonical source for all twelve skills.
 
 ```sh
 git clone https://github.com/IgnacioMonge/z80-skills.git ~/plugins/z80-skills
@@ -203,14 +206,14 @@ under `~/.agents/skills/<skill-name>` or the legacy
 `~/.codex/skills/<skill-name>`.
 Those copies can shadow the namespaced plugin and omit package-level files such
 as `scripts/run_in_worktree.py`; copying individual directories from `skills/`
-is not a complete installation. The plugin already bundles all eleven skills,
+is not a complete installation. The plugin already bundles all twelve skills,
 including `route-z80` and `workflow`. The installer warns when
 it finds one of these duplicate locations; move or disable it before opening a
 new Codex task.
 
-Only `route-z80` participates in implicit Z80-domain selection. The nine
+Only `route-z80` participates in implicit Z80-domain selection. The ten
 routed skills remain available through explicit `$send-bridgezx`, `$develop-z80`,
-`$document-z80`, `$port-spectranext`, `$debug-z80`, `$audit-z80`,
+`$document-z80`, `$port-spectranext`, `$debug-z80`, `$ts2068-debug`, `$audit-z80`,
 `$organize-z80`, `$shrink-z80`, and `$optimize-z80` invocations; after routing,
 `route-z80` loads only the selected sibling. Natural-language requests do not
 need to be ambiguous to enter the router. This keeps routine repository work on
@@ -234,7 +237,7 @@ open a new task again.
 
 ### Grok Build
 
-Grok Build reads this checkout in place. Do not copy the eleven skills into
+Grok Build reads this checkout in place. Do not copy the twelve skills into
 `~/.grok/skills` or `~/.claude/skills`; those copies go stale.
 
 ```powershell
@@ -242,7 +245,7 @@ pwsh -File .\scripts\install-for-grok.ps1
 ```
 
 The installer adds `<repo>/skills` to `~/.grok/config.toml` `[skills].paths`
-and deletes obsolete copies of the eleven bundled skills from `~/.grok/skills`
+and deletes obsolete copies of the twelve bundled skills from `~/.grok/skills`
 and `~/.claude/skills`. Unrelated personal skills in those directories are left
 untouched. After a `git pull`, Grok already sees the updated trees; open a new
 Grok task so the catalog reloads.
@@ -304,6 +307,14 @@ consumer seam, and stop for real hardware evidence when required.
 Use debug-z80 to isolate why this 128K build crashes after returning from the
 ISR. Do not edit until one discriminating check identifies the causal owner;
 then apply and verify the minimal fix.
+```
+
+### TS2068 runtime debugging
+
+```text
+Use ts2068-debug to reproduce this ROM hang in ZEsarUX, determine whether the
+CPU is in a normal keyboard wait, and capture PC, registers, trace, and paging
+state with bounded execution.
 ```
 
 ### Auditing
@@ -383,6 +394,8 @@ configuration, and recipe must belong to the same baseline.
   seam and physical results require explicit user observation.
 - `debug-z80` keeps diagnosis and candidate repairs in a disposable worktree;
   it edits the primary tree only for a requested, causally supported repair.
+- `ts2068-debug` uses bounded execution and isolated state/ports for concurrent
+  ZEsarUX sessions; the external `ts2068-debug` CLI is a required dependency.
 - `document-z80` edits only the public human-facing documentation in scope; it
   does not change code, build configuration, releases, or agent instructions.
 - `audit-z80` and `shrink-z80` do not edit the project.

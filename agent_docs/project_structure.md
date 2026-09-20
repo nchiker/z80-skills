@@ -23,6 +23,7 @@ skills/
   develop-z80/                   Idea-to-implementation SDD workflow
   port-spectranext/              External Spectranext consumer-port workflow
   debug-z80/                     Root-cause diagnosis and gated repair
+  ts2068-debug/                  TS2068 runtime control through ZEsarUX/ZRCP
   audit-z80/                     Read-only correctness audit
   organize-z80/                  Architecture and reorganization workflow
   shrink-z80/                    Size-only analysis and analyzers

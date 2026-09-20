@@ -7,6 +7,9 @@ repository; these entries track development toward the first published release.
 
 ### Added
 
+- Imported the proven `ts2068-debug` runtime skill, command reference, and
+  operational gotchas; added router, Codex, Grok, bilingual documentation, and
+  routing-evaluation integration for live TS2068 ZEsarUX/ZRCP work.
 - Internal automatic Jev routing and four-dimensional proposal scoring for audit,
   shrink, and optimize, with a shared two-attempt task budget, native receipts,
   confidence gates, caching, and no automatic retries. Existing optimizer
@@ -17,7 +20,7 @@ repository; these entries track development toward the first published release.
 - Opt-in policy decision cases cover authorization, model selection, selective
   context, and verification reuse without replacing historical evaluation results.
 
-- Portable workflow, Z80 domain routing, eight engineering specialists, and
+- Portable workflow, Z80 domain routing, nine engineering specialists, and
   guarded BridgeZX delivery, with installation tooling and English/Spanish
   documentation.
 - Isolated-worktree tooling and routing/evidence evaluation infrastructure.
