@@ -83,3 +83,38 @@ Still obey `hard-contract.md` — playbook items are seeds, not proof.
 
 After SAFE categories, use `external-research.md` only for evidence-selected
 questions. Keep notable rejected ideas; do not emit a fixed folklore checklist.
+
+## Multi-image / banked ROM sets
+
+Measured on a 16K HOME + 8K EXROM interpreter pair (2068-Leap V2, 2026-10); each item paid off
+more than the micro passes:
+
+- **Bank-aware accounting.** Report free bytes per image/bank, never a sum across banks; moving a
+  routine between banks is a transfer, not a saving, and costs a paging trampoline or slot on the
+  calling side. Measure each step with the real build (`make budget`-style report) and keep the
+  per-step history; never sum unbuilt candidates.
+- **Production-only reachability.** A routine referenced only by legacy or test builds that share a
+  source file is dead in the shipped image, but textual scans count those references. Walk the
+  label graph of the *shipped listings* with precise fall-through and `EQU` aliases:
+  `scripts/production_reachability.py HOME.lst EXROM.lst --roots-below 0x100 --root-prefix
+  <slot-name-prefix> --root <dispatch-table>`. Slots placed by address (an `ORG` or `ASSERT` rather
+  than a name) must be added as `--root`. Exclude a confirmed routine with a production define,
+  not by deleting it (the other builds keep it).
+- **Cross-bank slot tables.** Fixed-address jump slots between images accumulate dead slots and
+  padding (`ORG`-placed stubs with gaps). Pack the used slots behind computed `EQU`s with an
+  `ASSERT` per slot; grep tests and tools for hard-coded slot addresses first.
+- **Indirection made redundant by full linking.** A jump table that existed so one image need not
+  know the other's addresses is pure cost once the second image is linked against the first's
+  symbols; keep only the version/magic check.
+- **RST tail calls.** If `rst n` = `call X`, a tail `jp X` becomes `rst n : ret` (-1 byte each);
+  only where X does not unwind to a saved SP (see `audit-z80` asm-abi contracts).
+- **Dispatch return in IY/IX.** VM handlers ending `jp loop` -> `jp (iy)` (-1 byte, faster) when
+  IY is otherwise unused; audit every path that runs foreign code and reload or preserve IY there.
+- **Padding reuse.** Small routines can live in RST-slot padding -- **only** if no code falls
+  through into them (check the instruction before each one).
+- **jp -> jr to a fixed point.** Each pass shortens code and brings more targets into range; repeat
+  until no candidate is left.
+- **Prove behaviour unchanged for compiler/VM shrinks.** Compile a whole corpus on the old and new
+  builds and compare the emitted bytecode byte for byte (and the compile errors); a shrink that
+  changes no output needs no new language tests.
+

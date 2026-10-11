@@ -18,6 +18,8 @@ Run only scripts relevant to the selected mode:
 - `libpull_scan.py` and `generated_helper_scan.py`: linked/generated helper
   roots.
 - `deadcode_scan.py`: reachability candidates.
+- `production_reachability.py`: label-graph reachability over the listings of the
+  shipped images only (multi-image/banked ROMs; precise fall-through, `EQU` aliases).
 - `literal_dup_scan.py`: source literals, tables, and possible encodings.
 - `z80_pattern_scan.py`: hand/generated ASM candidates.
 - `net_compression_check.py`: storage and peak-RAM arithmetic from measured
@@ -35,7 +37,8 @@ queue, not confirmed savings.
 - `diverge`: cover every applicable high-yield lane, using
   `agent-orchestration.md` only where independent lanes add value, then
   `blind-spots.md` and `reporting.md`.
-- `deadcode`: deadcode scanner + `high-impact.md`; verify indirect calls,
+- `deadcode`: deadcode scanner (and `production_reachability.py` when several
+  builds share sources) + `high-impact.md`; verify indirect calls,
   exports, map presence, and shared tails.
 - `dedup`: literal/repeated-sequence scanners; separate source duplicates from
   generated echoes.

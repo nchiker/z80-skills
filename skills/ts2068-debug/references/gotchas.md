@@ -100,6 +100,22 @@ TS2068_DEBUG_STATE_DIR=/tmp/ts2068-debug-scratch ts2068-debug --json start \
 Check `pgrep -fa zesarux` before starting a session if you suspect something
 else might already be running against the same or a related ROM.
 
+## Parallel suites: ports, load, and orphaned emulators
+
+Running several regression suites at once (one ZEsarUX per suite) works when each suite has its
+own `TS2068_DEBUG_STATE_DIR` and port. Two failure modes are harness incidents, not ROM defects:
+
+- Under heavy host load a ZRCP reply can arrive empty or the connection can drop (seen as a
+  `KeyError: 'registers'` from a `regs` call, or a connection error) in the middle of a long
+  suite. Rerun that suite alone before counting any failure, and report the incident.
+- A crashed or killed session can leave its ZEsarUX running with parent PID 1, still holding its
+  port. `pgrep -fa zesarux` before choosing ports; do not kill processes you did not start.
+
+For tape-format tests, capturing the block a ROM's SAVE routine passes to its transport (a
+breakpoint at the routine's entry, then a memory read) and replaying synthesized blocks into its
+LOAD routine is far faster than an audio round trip and exercises the same validation code; keep
+one real EAR-stream case per format as well.
+
 ## Interrupt state and border color are structured data, not just text
 
 `regs` now includes `IM`, `IFF1`/`IFF2` (as "set"/"clear"), and `TSTATES`

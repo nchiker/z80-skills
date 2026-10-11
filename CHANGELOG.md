@@ -7,6 +7,19 @@ repository; these entries track development toward the first published release.
 
 ### Added
 
+- `shrink-z80/scripts/production_reachability.py`: label-graph reachability over the listings of
+  the shipped images of a multi-image/banked ROM set (precise fall-through, `EQU` aliases, false
+  `IF` blocks skipped, same-address labels as one location), with a unit test. Validated on a
+  16K + 8K interpreter ROM pair.
+- Lessons from qualifying the 2068-Leap V2 ROM: code-change contracts in `audit-z80` (saved-SP
+  unwinding, flag pass-through, skip tricks, status outputs, fall-through, dispatch registers,
+  temporaries, persisted-image validation); banked-ROM size work in `shrink-z80` (bank-aware
+  accounting, slot packing, RST tail calls, IY dispatch, jp->jr fixed point, bytecode identity);
+  release qualification in `develop-z80` (strict PASS/FAIL/XFAIL/XPASS accounting, arithmetic
+  oracles, output identity, T-state bisection, reproducible release checks, emulator-qualified
+  designation, branch integration); parallel-suite incidents and tape capture/replay in
+  `ts2068-debug`.
+
 - Imported the proven `ts2068-debug` runtime skill, command reference, and
   operational gotchas; added router, Codex, Grok, bilingual documentation, and
   routing-evaluation integration for live TS2068 ZEsarUX/ZRCP work.

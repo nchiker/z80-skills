@@ -43,6 +43,39 @@ model, ROM, binary, and configuration for replay. Compare images or serialized
 state only as product evidence; they never replace technical invariants such
 as ABI, memory, timing, interrupt, paging, or I/O checks.
 
+## Qualifying a ROM, interpreter, or compiler release
+
+Lessons from qualifying a Z80 BASIC compiler/VM ROM pair (2068-Leap V2, 2026-10):
+
+- **Strict accounting.** Classify every case PASS, FAIL, XFAIL (a registered known defect
+  reproduced as registered) or XPASS (a registered defect that no longer reproduces -- a failure
+  until the register is updated). Never delete a failing case; keep a ledger of every changed
+  expectation with its reason (specification change, owner decision, test defect) and mark which
+  ones became stricter and which were widened.
+- **Reference oracles for arithmetic.** Run the real Z80 routines (or the real interpreter on a
+  tiny program) over boundary values plus seeded random pairs and compare with exact host
+  arithmetic; include the overflow/promotion rule in the oracle and state any precision tolerance
+  explicitly (e.g. "within 2 ulp of the 5-byte float").
+- **Output identity for size work.** For compiler or VM shrinks, compile a whole corpus on both
+  builds and compare the emitted code byte for byte; identical output is the proof that the shrink
+  changed no behaviour.
+- **Deterministic speed evidence.** Measure emulated T-states between named boundaries, not
+  wall time; bisect a regression by building each commit of the suspect range.
+- **Frozen configurations.** Export each qualified commit with `git archive` into its own build
+  directory stamped with the commit, instead of testing in live worktrees; rerun suites against
+  the frozen copy.
+- **Reproducible release.** From a fresh clone of the release commit: build, compare every image
+  byte for byte with the images the qualification ran on, verify the hash manifest, and check any
+  identity value the firmware writes (for example a ROM CRC stamped into saved data) against a
+  real artifact produced by the ROM, not only the host computation.
+- **Name the evidence honestly.** An emulator-only qualification is "emulator-qualified"; keep a
+  hardware checklist whose items read `NOT TESTED` (with the reason) until run on the machine --
+  neither passes nor failures.
+- **Integration.** Merge study/prototype branches into one integration branch, prove identity or
+  run the full suites there, then fast-forward the development branch; remove a worktree only
+  when it is clean and its commits are contained in a kept branch (`git worktree remove`, never
+  `--force`), and keep the branches.
+
 ## Acceptance Matrix
 
 Report every criterion in this shape:

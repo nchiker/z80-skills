@@ -68,3 +68,34 @@ If you run `full` and read mixed C plus ASM code, do not finalize until you have
 - Parameter width or packing
 - Return-value width
 - Relative branches or fall-through in the hot spots you inspected
+
+## Contracts that inserted code breaks silently
+
+Each of these was introduced by a correct-looking change to a working Z80 interpreter ROM and
+caught only by a regression suite (2068-Leap V2, 2026-10). Check them for code *being changed*,
+not only for code being read:
+
+- **Saved-SP unwinding.** If an error path restores SP from a value saved at a routine's entry
+  (`ld sp,(SAVED_SP) : ret`), every routine that can raise must be *called* at the stack depth the
+  save expects. Replacing `call X : ret` by a tail `jp X` leaves the unwind slot to be overwritten
+  (the unwind then "returns" to a pushed data word).
+- **Flag pass-through contracts.** Comments such as "keeps carry" / "flags preserved" on a tail
+  `jp` are part of the contract: an inserted `xor a`, `or a`, `and n` or `cp n` breaks it. Prefer
+  `ld a,0` / `ld (nn),a` sequences or move the new work to a flag-neutral place.
+- **Skip tricks.** `db $FE` (`cp n`) swallows ONE following byte, `db $01`/`$11`/`$21` (`ld rr,nn`)
+  swallow TWO: match the skipped instruction's length and the clobbered register.
+- **Library status outputs.** A library that reports failure through a status cell (e.g. a
+  floating-point calculator's error code) must have that cell checked at every call site that can
+  fail; an ignored overflow flag produced silently wrong results.
+- **Relocated code and fall-through.** Before moving a routine, check that the instruction before
+  it is an unconditional transfer; a fall-through target that moves silently changes control flow.
+- **Dispatch registers.** An interpreter that keeps its dispatch address in IY/IX ("handlers end
+  `jp (iy)`") loses it in any foreign code -- plug-ins, user machine code, a re-entrant call of the
+  interpreter: every such path must preserve or reload it, and the entry must document "destroys IY".
+- **Temporaries.** Round-robin temporary slots (strings, floats) must not be reused while an
+  earlier result is still referenced on the evaluation stack; nested function results expose it.
+- **Persisted images.** Data restored from tape/disk that contains pointers (a saved session, a
+  heap) must be validated before it is installed: checksum, an image-identity check (exact code
+  build), region boundaries forming one ordered chain, an exact partition of the block, and every
+  pointer inside its region. Never follow a stored pointer to check it.
+
