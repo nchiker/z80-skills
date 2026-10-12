@@ -2,6 +2,14 @@
 
 **Languages:** English · [Español](README.es.md)
 
+> **Fork notes.** `nchiker/z80-skills` is a fork of
+> [`ignacioMonge/z80-skills`](https://github.com/ignacioMonge/z80-skills) that adds a `ts2068-debug`
+> skill (live TS2068 ROM debugging through ZEsarUX, including a shared reference for running a custom
+> ROM in ZEsarUX, EightyOne and Fuse), a production-image reachability script and lessons from
+> qualifying the 2068-Leap V2 ROM. Upstream changes are merged with `git merge upstream/main`; see
+> `CHANGELOG.md` ("Local fork notes") for what is local. Same MIT license; the upstream copyright
+> notice is kept in `LICENSE`.
+
 Codex plugin with one standalone adaptive workflow, one thin domain selector,
 nine complementary engineering skills, and guarded BridgeZX file delivery for
 Z80 projects, especially ZX Spectrum software written in assembly, C, or a
@@ -447,6 +455,8 @@ python3 skills/audit-z80/scripts/smoke_test.py
 python3 skills/shrink-z80/tests/run_smoke.py
 python3 -m unittest discover -s skills/optimize-z80/scripts -p 'test_*.py'
 python3 scripts/test_behavior_evals.py
+python3 scripts/test_production_reachability.py
+python3 -m pytest -q tools/shrink-agent
 python3 skills/send-bridgezx/scripts/test_bridgezx_transfer.py
 ```
 
