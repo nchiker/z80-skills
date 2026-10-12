@@ -42,6 +42,16 @@ repository; these entries track development toward the first published release.
   documentation.
 - Isolated-worktree tooling and routing/evidence evaluation infrastructure.
 
+### Local fork notes (2026-10-12 upstream merge)
+
+- Merged upstream `ignacioMonge/z80-skills` `c80a751` (0.8.4) by merge commit; local history preserved.
+- Taken from upstream unchanged: `tools/shrink-agent`, `audit-z80` diff/change-review mode,
+  workflow review practices, removal of the Jev integration (our entries about Jev dropped).
+- Intentionally kept local: the `ts2068-debug` skill and its routing/README/eval entries, the
+  production-reachability script, V2-qualification lessons, and the local version line
+  (0.9.2; upstream 0.8.4 is lower, so the installed plugin still updates).
+- Not pushed to upstream; this remains an independent repository.
+
 ### Changed
 
 - Workflow delegation adds a closed worker status set, verifier finding triage,
