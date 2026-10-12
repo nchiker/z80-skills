@@ -7,6 +7,9 @@ repository; these entries track development toward the first published release.
 
 ### Added
 
+- `ts2068-debug/references/emulators.md`: how to run any custom TS2068 HOME/EXROM ROM in ZEsarUX (the
+  qualified emulator), EightyOne and Fuse (the latter two are courtesy alternatives); the skill's command
+  reference now covers `diagnose`, `mem-snapshot`/`mem-diff`, `sessions` and `stop --port`.
 - `shrink-z80/scripts/production_reachability.py`: label-graph reachability over the listings of
   the shipped images of a multi-image/banked ROM set (precise fall-through, `EQU` aliases, false
   `IF` blocks skipped, same-address labels as one location), with a unit test. Validated on a
@@ -49,7 +52,7 @@ repository; these entries track development toward the first published release.
   workflow review practices, removal of the Jev integration (our entries about Jev dropped).
 - Intentionally kept local: the `ts2068-debug` skill and its routing/README/eval entries, the
   production-reachability script, V2-qualification lessons, and the local version line
-  (0.9.2; upstream 0.8.4 is lower, so the installed plugin still updates).
+  (0.9.3; upstream 0.8.4 is lower, so the installed plugin still updates).
 - Not pushed to upstream; this remains an independent repository.
 
 ### Changed
