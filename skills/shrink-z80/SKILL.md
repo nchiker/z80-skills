@@ -68,8 +68,9 @@ incomplete.
    unless an equivalent gate remains valid under workflow verification rules.
    Use `map_summary.py` only for selected maps needed by the analysis. A local,
    source-only pass requires neither a repository-wide scan nor artifact checks.
-   Invoke selected scripts as `python3 "$SKILL_DIR/scripts/<script>.py"` with
-   their required arguments and the host interpreter described above.
+   Invoke selected scripts as `<python> "$SKILL_DIR/scripts/<script>.py"` with
+   their required arguments, where `<python>` is the host interpreter described
+   above.
 3. Read `references/agent-orchestration.md` only when independent lanes add
    value, then pass selected briefs to `$workflow`.
 4. Attack SAFE high-impact mechanisms before micro or dark-art tricks.
@@ -91,14 +92,10 @@ incomplete.
 - Byte and report rules: `references/z80-byte-evidence.md`,
   `references/reporting.md`
 - Guardrails: `references/blind-spots.md`
-
-## Automatic proposal scoring
-
-After merging current candidate cards and applying this skill's hard gates,
-follow the sibling workflow's [shared Jev scoring protocol](references/jev-scoring.md)
-with domain `shrink` before final ordering. The shared protocol exclusively owns
-utility, authorization, session, packet and output gates; this skill retains its
-baseline, byte-evidence, coverage and reporting contracts.
+- Unattended applying loop, only when the user explicitly asks to apply
+  savings automatically or to run shrink-agent: `../../tools/shrink-agent/README.md`.
+  It edits a disposable worktree and commits to its own branch; this skill's
+  read-only contract still governs analysis passes.
 
 ## Core Rules
 

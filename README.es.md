@@ -66,7 +66,8 @@ Los skills enrutados se solapan solo donde es útil:
 - Usa `debug-z80` para un fallo observado cuyo owner causal sigue sin conocerse.
 - Usa `ts2068-debug` cuando una ROM TS2068 necesita reproducción, inspección,
   interacción o verificación runtime mediante ZEsarUX/ZRCP.
-- Usa `audit-z80` para revisión preventiva o amplia de corrección en solo lectura.
+- Usa `audit-z80` para revisión preventiva o amplia de corrección en solo lectura,
+  o en modo `diff` para el riesgo de corrección de un conjunto de cambios.
 - Usa `organize-z80` para mapear o mejorar con seguridad propiedad, dependencias, layout de fuentes y placement en runtime.
 - Usa `shrink-z80` para una búsqueda exhaustiva centrada exclusivamente en
   tamaño.
@@ -129,8 +130,8 @@ restricciones del proyecto no modificadas, los requisitos de evidencia y los
 límites del runtime. Las paradas causadas por un skill identifican la regla
 exacta según la [política de autorización](skills/workflow/references/authorization.md).
 
-La delegación conserva los valores predeterminados de Luna/Sol. Solo para un
-análisis causal difícil o de alto riesgo identificado, una petición expresa
+La delegación usa Sol 6.1 por defecto y conserva el esfuerzo de cada asignación.
+Solo para un análisis causal difícil o de alto riesgo identificado, una petición expresa
 puede seleccionar **Astra Medium** (`gpt-6-astra`, esfuerzo `medium`). Nunca se
 activa por escalado automático, sustitución, herencia ni para otros workers.
 Véase la [política de modelos](skills/workflow/references/roles.md#explicit-astra-medium-opt-in).
@@ -337,6 +338,11 @@ Usa audit-z80 en modo full. Revisa las diferencias entre los targets 48K y 128K,
 incluidos paging, ROM, stack, interrupciones y artefactos generados.
 ```
 
+```text
+Usa audit-z80 en modo diff contra main. Comprueba si los cambios de esta rama en
+la ISR y en C/ASM rompen el ABI, los registros preservados, el estado compartido o el mapa de memoria.
+```
+
 ### Organización
 
 ```text
@@ -515,13 +521,3 @@ siempre que se conserven el aviso de copyright y el texto de la licencia.
 ## Autor
 
 M. Ignacio Monge García
-
-## Integración de Jev (0.9.0)
-
-`workflow`, `route-z80`, `audit-z80`, `shrink-z80` y `optimize-z80` utilizan
-automáticamente el cliente Jev/OpenCode ya instalado para enrutamiento y
-puntuación de candidatas; no hace falta escribir `$jev`. Véanse
-[configuración y límites](skills/workflow/references/jev.md) y
-[puntuación por especialidad](skills/workflow/references/jev-scoring.md).
-Se conservan el puntuador cuantitativo, los modelos y los textos de interfaz.
-El adaptador opcional requiere Python 3.10+ (3.11+ para políticas TOML).

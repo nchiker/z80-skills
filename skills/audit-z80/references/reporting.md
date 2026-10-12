@@ -40,11 +40,25 @@ Severity is independent of `Type` and `Confidence`.
 
 After findings, add a short coverage block:
 
-- scope audited
+- scope audited; in `diff` mode, the resolved range and the named risks checked
 - categories covered
-- skipped areas or unknown artifacts
+- skipped areas, each with its reason, and unknown artifacts; nothing set aside
+  silently
 - residual risks or testing gaps
 - generated artifacts used: `.map`, `.sym`, `.lst`, generated `.asm`, `.opt/.rul`, or `none`
+
+## Change verdict
+
+In `diff` mode, state one verdict line after the findings and before coverage:
+
+- `BLOCK`: a promoted `CRITICAL` or `HIGH` finding that the change introduces or
+  exposes, at `PROVEN` or `LIKELY`.
+- `VERIFY FIRST`: no such finding, but a `SUSPICIOUS` or `NEEDS BUILD` item could
+  become one.
+- `NO BLOCKER FOUND`: neither; name the strongest residual risk.
+
+The verdict summarizes the promoted evidence; it never certifies the change as
+correct.
 
 ## No-finding case
 
@@ -57,10 +71,3 @@ If you do not find a bug:
 ## Hard contract
 
 Obey `hard-contract.md`: current-code evidence only; primary read-only; disposable sandboxes deleted by default.
-
-## Internal priority overlay
-
-When the shared Jev protocol referenced by `../SKILL.md` admits an ordering, use
-it only to break equivalent-priority ties. Keep these report fields, severity,
-evidence and promotion rules unchanged. A skipped or unscored hook leaves the
-domain order unchanged and is not mentioned in the report.

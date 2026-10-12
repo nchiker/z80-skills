@@ -65,7 +65,8 @@ useful:
 - Use `debug-z80` for an observed failure whose causal owner remains unknown.
 - Use `ts2068-debug` when a TS2068 ROM needs live ZEsarUX/ZRCP reproduction,
   inspection, interaction, or runtime verification.
-- Use `audit-z80` for preventive or broad read-only correctness review.
+- Use `audit-z80` for preventive or broad read-only correctness review, or in
+  `diff` mode for the correctness risk of a change set.
 - Use `organize-z80` to map or safely improve ownership, dependencies, source layout, and runtime placement.
 - Use `shrink-z80` for an exhaustive search focused exclusively on size.
 - Use `optimize-z80` to decide among competing objectives and prioritize the
@@ -124,8 +125,9 @@ scope; unchanged project constraints, evidence requirements, and runtime limits
 remain in force. Skill-induced stops identify the exact rule using the shared
 [authorization policy](skills/workflow/references/authorization.md).
 
-Delegation keeps the existing Luna/Sol defaults. For a named difficult causal or
-high-risk analysis only, an explicit user request may select **Astra Medium**
+Delegation defaults to Sol 6.1 with the existing per-assignment reasoning efforts.
+For a named difficult causal or high-risk analysis only, an explicit user request
+may select **Astra Medium**
 (`gpt-6-astra`, reasoning effort `medium`). It is never an automatic escalation,
 fallback, inherited default, or permission for other workers. See the canonical
 [model policy](skills/workflow/references/roles.md#explicit-astra-medium-opt-in).
@@ -329,6 +331,11 @@ Use audit-z80 in full mode. Review the differences between the 48K and 128K targ
 including paging, ROM, stack, interrupts, and generated artifacts.
 ```
 
+```text
+Use audit-z80 in diff mode against main. Check whether this branch's ISR and
+C/ASM changes break the ABI, preserved registers, shared state, or the memory map.
+```
+
 ### Organization
 
 ```text
@@ -500,13 +507,3 @@ Copyright © 2026 M. Ignacio Monge García.
 ## Author
 
 M. Ignacio Monge García
-
-## Jev integration (0.9.0)
-
-Routing and candidate scoring use the existing Jev/OpenCode client automatically
-from `workflow`, `route-z80`, `audit-z80`, `shrink-z80` and `optimize-z80`.
-No separate `$jev` invocation is needed. See
-[configuration and operating boundaries](skills/workflow/references/jev.md) and
-[domain-specific scoring](skills/workflow/references/jev-scoring.md).
-The quantitative optimizer, model defaults and UI strings are unchanged.
-The optional adapter requires Python 3.10+ (3.11+ for optimizer TOML policies).

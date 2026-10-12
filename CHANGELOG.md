@@ -23,15 +23,19 @@ repository; these entries track development toward the first published release.
 - Imported the proven `ts2068-debug` runtime skill, command reference, and
   operational gotchas; added router, Codex, Grok, bilingual documentation, and
   routing-evaluation integration for live TS2068 ZEsarUX/ZRCP work.
-- Internal automatic Jev routing and four-dimensional proposal scoring for audit,
-  shrink, and optimize, with a shared two-attempt task budget, native receipts,
-  confidence gates, caching, and no automatic retries. Existing optimizer
-  functions, model defaults, hard contracts, and interface strings are preserved.
-- Revision 0.8.3 adds an explicit, assignment-scoped Astra Medium option for
-  causal/high-risk delegation; Luna/Sol defaults remain unchanged. Automatic
-  fallback, inheritance, unverified defaults, and effort upgrades cannot enable it.
+- `tools/shrink-agent`: unattended Claude API loop that applies size reductions to a
+  z88dk project in a disposable worktree, one routine per commit, gated by all-target
+  builds, byte measurement, optional tests and an independent model review.
+- Explicit, assignment-scoped Astra Medium option for causal/high-risk delegation.
+  Automatic fallback, inheritance, unverified defaults, and effort upgrades cannot
+  enable it.
 - Opt-in policy decision cases cover authorization, model selection, selective
   context, and verification reuse without replacing historical evaluation results.
+- `audit-z80` `diff` mode reviews the correctness risk of a change set: merge-base
+  range by default, one focused check per named Z80 risk, and a `BLOCK` /
+  `VERIFY FIRST` / `NO BLOCKER FOUND` verdict. Routing and two routing
+  evaluation cases cover the boundary with `debug-z80` and generic `workflow`
+  review.
 
 - Portable workflow, Z80 domain routing, nine engineering specialists, and
   guarded BridgeZX delivery, with installation tooling and English/Spanish
@@ -40,6 +44,19 @@ repository; these entries track development toward the first published release.
 
 ### Changed
 
+- Workflow delegation adds a closed worker status set, verifier finding triage,
+  bounded waits with worker resumption, file-less recovery after context
+  compaction, and one-worker batching of same-shape edits. Completion maps every
+  acceptance criterion to evidence and lists decisions made on the user's behalf.
+- Audit, shrink, and optimize hard contracts treat commit messages, change
+  descriptions, and asserting comments as search seeds, not proof. Audit coverage
+  states a reason for every skipped area, and audit and shrink instructions use
+  the host-selected Python interpreter instead of a hardcoded `python3`.
+
+- Workflow delegation uses Sol 6.1 instead of Luna/Sol 5.6, preserving each
+  assignment's reasoning effort and the explicit Astra Medium opt-in. Current
+  documentation and policy evaluation cases follow the new defaults; historical
+  evaluation results retain their recorded models.
 - Optimize references quantify copy/fill costs, explain model-specific raster
   windows, screen stepping, refresh/snow and undocumented operations, and
   separate demoscene sizecoding from throughput/timing objectives.
@@ -71,10 +88,8 @@ repository; these entries track development toward the first published release.
 
 ### Fixed
 
-- Jev proposal scoring now rejects no-op hard-priority groups before any outbound
-  request, requires authorization before session and packet creation, supports a
-  reusable per-user `ask`/`always_allow`/`always_deny` preference, and keeps
-  skipped or unscored hooks out of user-facing reports.
+- Plugin manifests use the same version across Codex, the root package, and
+  Gemini, so package consistency checks pass after restoring the 0.8.3 tree.
 - Workflow distinguishes explicit user overrides from still-applicable project,
   domain, runtime, and evidence requirements; skill-induced stops identify their
   exact source. Organization maps and shrink scans are now scope-conditional.

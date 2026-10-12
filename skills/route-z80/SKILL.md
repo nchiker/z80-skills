@@ -22,16 +22,6 @@ Select an unambiguous match immediately. If size, structure, and performance
 appear together as alternatives without a primary outcome, remain in `route-z80`
 and ask one focused question. Alternatives are not competing acceptance criteria.
 
-### Optional classification, automatic execution
-
-After the explicit/unambiguous rules above, consult
-[the internal Jev adapter](references/jev.md) for a genuinely unresolved
-intent classification. Use action `specialist`; admit only existing routes that
-meet their boundaries. Jev cannot resolve alternatives where the user's primary
-objective is absent; retain the focused clarification rule above. Share the same
-session with the selected specialist/workflow. Do not load execution/model
-references merely to select a domain. No separate `$jev` invocation is needed.
-
 | Requested outcome / boundary | Route |
 | --- | --- |
 | Send named files/directories through BridgeZX, including build artifacts. Building or changing them is a separate objective. | [`send-bridgezx`](../send-bridgezx/SKILL.md) |
@@ -40,7 +30,7 @@ references merely to select a domain. No separate `$jev` invocation is needed.
 | Create, restructure, review, or synchronize public repository documentation, including one README. | [`document-z80`](../document-z80/SKILL.md) |
 | Diagnose, or diagnose and repair, one observed failure with unresolved causality, conflicting evidence, or a failed evidence-supported fix. Includes regression against a known baseline. | [`debug-z80`](../debug-z80/SKILL.md) |
 | Reproduce, inspect, or verify live Timex Sinclair 2068 ROM behavior through ZEsarUX/ZRCP, including registers, memory, paging, traces, keyboard input, breakpoints, watchpoints, screen state, or border-color verdicts. | [`ts2068-debug`](../ts2068-debug/SKILL.md) |
-| Preventive or broad read-only correctness audit: ABI, ISR, memory, firmware, toolchain, or hardware risks, without one failure driving the investigation. | [`audit-z80`](../audit-z80/SKILL.md) |
+| Preventive or broad read-only correctness audit, or the correctness risk of a change set (diff, branch, PR): ABI, ISR, memory, firmware, toolchain, or hardware risks, without one failure driving the investigation. | [`audit-z80`](../audit-z80/SKILL.md) |
 | Map or reorganize ownership, dependencies, modules, source layout, banks, overlays, or runtime placement. | [`organize-z80`](../organize-z80/SKILL.md) |
 | Size or memory footprint is the sole acceptance metric; prove net byte savings. | [`shrink-z80`](../shrink-z80/SKILL.md) |
 | Improve acceptable behavior: identify bottlenecks and rank speed, size, RAM, rendering, latency, or competing metrics. | [`optimize-z80`](../optimize-z80/SKILL.md) |

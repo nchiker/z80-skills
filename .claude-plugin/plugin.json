@@ -1,6 +1,6 @@
 {
   "name": "z80-skills",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Standalone adaptive workflow, thin Z80 routing, TS2068 runtime debugging, BridgeZX delivery, and specialist development, documentation, porting, debugging, audit, organization, size, and optimization skills.",
   "author": {
     "name": "M. Ignacio Monge García"
