@@ -195,6 +195,10 @@ own `TS2068_DEBUG_STATE_DIR` and port. Two failure modes are harness incidents, 
 - `start` now refuses a busy port (naming the owner) and removes its own emulator if ZRCP never
   answers, so a failed start no longer leaves an orphan.
 
+`start` refuses a missing `--rom`: ZEsarUX silently boots a default ROM for a bad `--romfile`, which used to
+mean debugging the wrong ROM with a success status. `run`/`step` also switch CPU-history recording on first, so
+`trace`/`diagnose` can show a hang that already happened.
+
 `stop` needs neither the symbols file nor the directory `start` ran in (it used to fail with
 `FileNotFoundError: build/exrom.sym` from another directory). Symbol and ROM paths are stored absolute.
 
