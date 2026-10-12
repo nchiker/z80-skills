@@ -58,8 +58,12 @@ repository; these entries track development toward the first published release.
   workflow review practices, removal of the Jev integration (our entries about Jev dropped).
 - Intentionally kept local: the `ts2068-debug` skill and its routing/README/eval entries, the
   production-reachability script, V2-qualification lessons, and the local version line
-  (0.9.3; upstream 0.8.4 is lower, so the installed plugin still updates).
-- Not pushed to upstream; this remains an independent repository.
+  (0.9.4; upstream 0.8.4 is lower, so the installed plugin still updates).
+- Merged upstream `7ca4f68` (Claude Code install variant): the nine upstream specialists now set
+  `disable-model-invocation: true` (user-invoked as `/audit-z80` etc.; only `route-z80` and `workflow` are
+  implicit). Kept local: `ts2068-debug` stays model-invocable so Claude reaches for it on a TS2068 runtime
+  problem without being asked; add the same front-matter line to it to make it user-only as well.
+- Never pushed to upstream: the `upstream` remote's push URL is disabled; `origin` is `nchiker/z80-skills`.
 
 ### Changed
 
