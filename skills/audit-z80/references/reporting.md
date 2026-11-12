@@ -60,6 +60,13 @@ In `diff` mode, state one verdict line after the findings and before coverage:
 The verdict summarizes the promoted evidence; it never certifies the change as
 correct.
 
+## Craft mode
+
+In `craft` mode, use the finding format, impact scale, and verdict in
+`craft-review.md`; the coverage note above still applies. In `auto` and `full`,
+put the craft pass in its own section after the correctness findings, with its
+own verdict; never rank waste together with bugs.
+
 ## No-finding case
 
 If you do not find a bug:

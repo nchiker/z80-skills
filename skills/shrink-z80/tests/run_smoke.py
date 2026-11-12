@@ -26,6 +26,7 @@ def section(out: str, name: str) -> list[str]:
 
 
 def main() -> int:
+    print(run(str(SKILL / "tests" / "test_technique_examples.py")), end="")
     skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     dispatcher_text = (SKILL / "references" / "dispatcher.md").read_text(encoding="utf-8")
     agent_text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
@@ -33,6 +34,8 @@ def main() -> int:
     assert "../workflow/SKILL.md" in skill_text
     assert "## Workflow Boundary" in orchestration_text
     assert "C:/Program Files" not in skill_text + dispatcher_text
+    assert "`agent`" in skill_text and "`agent`" in dispatcher_text
+    assert "tools/shrink-agent/shrink_agent.py" in skill_text
 
     byte_text = (SKILL / "references" / "z80-byte-evidence.md").read_text(encoding="utf-8")
     blackbook_text = (SKILL / "references" / "size-blackbook.md").read_text(encoding="utf-8")
@@ -149,6 +152,22 @@ def main() -> int:
 
         out = run(str(SKILL / "scripts" / "deadcode_scan.py"), str(root / "dead_comments.c"))
         assert any(line.startswith("unused:") for line in section(out, "possible_unreferenced_symbols"))
+
+        cb_and_djnz = root / "cb_and_djnz"
+        cb_and_djnz.mkdir()
+        (cb_and_djnz / "loop.asm").write_text(
+            "start:\n  ld b,4\nloop_lbl:\n  djnz loop_lbl\n  ld hl,tbl\n  ret\ntbl:\n  defw tbl_target\ntbl_target:\n  ret\ndead_asm:\n  ret\n",
+            encoding="ascii",
+        )
+        (cb_and_djnz / "cb.c").write_text(
+            "static void proto_unused(void);\nstatic void proto_unused(void){}\nstatic void my_cb(void){}\nvoid (*const fns[])(void) = { my_cb };\nint main(void){ return fns[0] != 0; }\n",
+            encoding="ascii",
+        )
+        out = run(str(SKILL / "scripts" / "deadcode_scan.py"), str(cb_and_djnz))
+        unref_cb = section(out, "possible_unreferenced_symbols")
+        assert not any(line.startswith(("loop_lbl:", "tbl:", "tbl_target:", "my_cb:")) for line in unref_cb), unref_cb
+        assert any(line.startswith("dead_asm:") for line in unref_cb), unref_cb
+        assert any(line.startswith("proto_unused:") for line in unref_cb), unref_cb
 
         out = run(str(SKILL / "scripts" / "deadcode_scan.py"), str(root / "alias_only" / "mixed.c"))
         assert any(line.startswith("foo:") for line in section(out, "possible_unreferenced_symbols"))
@@ -350,6 +369,70 @@ def main() -> int:
             expect=2,
         )
         assert "sizes must be non-negative" in out
+
+        # Census: an overlay-only routine and its static helper move together;
+        # a resident-called routine with caller cleanup and an IX epilogue does not.
+        def routine(body: bytes, size: int) -> bytes:
+            return body + bytes(size - len(body) - 1) + b"\xc9"
+
+        def call(addr: int) -> bytes:
+            return bytes((0xCD, addr & 0xFF, addr >> 8))
+
+        layout = (("_main", 0x8000, 32), ("_move_me", 0x8020, 40), ("_helper", 0x8048, 32),
+                  ("_shared", 0x8068, 32), ("_rodata_tbl", 0x8088, 8), ("_dead", 0x8090, 24),
+                  ("_ovl_table_fn", 0x80A8, 32), ("_cross_ovl", 0x80C8, 32))
+        at = {name: addr for name, addr, _ in layout}
+        bodies = {
+            "_main": (
+                b"\x21\x34\x12\xe5" + call(at["_shared"]) + b"\xf1\xe5" + call(at["_shared"]) + b"\xf1"
+                + b"\xc4" + at["_shared"].to_bytes(2, "little") + b"\xf1"
+                + call(at["_dead"])[:0]  # no call to _dead
+                + call(at["_ovl_table_fn"])[:0]
+            ),
+            "_move_me": b"\xc5" + b"\x00" * 10 + call(at["_helper"]) + b"\xc1\xc9",
+            "_helper": b"",
+            "_shared": bytes.fromhex("ddf9dde1c9"),
+            "_rodata_tbl": b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            "_dead": b"",
+            "_ovl_table_fn": b"",
+            "_cross_ovl": b"",
+        }
+        census = root / "census"
+        census.mkdir()
+        (census / "code.bin").write_bytes(b"".join(
+            bodies[n] if n == "_rodata_tbl" else routine(bodies[n], s)
+            for n, _, s in layout
+        ))
+        # OVL1 calls _move_me, calls _cross_ovl with 5-byte SDCC stack cleanup (ld hl,6; add hl,sp; ld sp,hl),
+        # and references _ovl_table_fn via a 16-bit table word (after 0x00 so it is not a strong ref).
+        ovl1_bytes = (
+            b"\x00" + call(at["_move_me"])
+            + call(at["_cross_ovl"]) + bytes.fromhex("21060039f9")
+            + b"\xc9\x00" + at["_ovl_table_fn"].to_bytes(2, "little")
+        )
+        # OVL2 references _cross_ovl only weakly via a 16-bit table entry.
+        ovl2_bytes = b"\xc9\x00" + at["_cross_ovl"].to_bytes(2, "little")
+        (census / "ovl.bin").write_bytes(ovl1_bytes)
+        (census / "ovl2.bin").write_bytes(ovl2_bytes)
+        (census / "game.map").write_text("".join(
+            f"{name:31} = ${addr:04X} ; addr, public, , m_c, {'rodata_compiler' if name == '_rodata_tbl' else 'code_compiler'}, m.c:1\n"
+            for name, addr, _ in layout), encoding="ascii")
+        out = run(str(SKILL / "scripts" / "winner_census.py"), "--map", str(census / "game.map"),
+                  "--bin", str(census / "code.bin"), "--origin", "0x8000",
+                  "--overlay", f"OVL1={census / 'ovl.bin'}",
+                  "--overlay", f"OVL2={census / 'ovl2.bin'}", "--min-bytes", "3")
+        moves = out.split("[overlay_only]", 1)[1].split("[unreferenced]", 1)[0]
+        unref = out.split("[unreferenced]", 1)[1].split("[abi_cleanup]", 1)[0]
+        abi = out.split("[abi_cleanup]", 1)[1].split("[frame_idioms]", 1)[0]
+        assert "-> OVL1: 104 B" in moves and "_helper (m_c) with _move_me" in moves, out
+        assert "_ovl_table_fn (m_c) [weak refs 1: check tables]" in moves, out
+        assert "_cross_ovl" not in moves, out
+        assert "_shared" not in moves, out
+        assert "_dead" in unref and "_ovl_table_fn" not in unref and "_cross_ovl" not in unref, out
+        assert "2 B over   2 sites  _shared" in abi, out
+        assert "_helper" not in abi, out
+        assert "5 B over   1 sites  _cross_ovl [1-site: fastcall only]" in abi, out
+        assert "1 x ld sp,ix; pop ix; ret" in out and "(resident net ~-3 B)" in out, out
         print("smoke ok")
         return 0
     finally:

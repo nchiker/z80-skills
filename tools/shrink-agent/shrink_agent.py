@@ -22,10 +22,13 @@ import difflib
 import fnmatch
 import json
 import os
+import posixpath
+import re
 import shutil
 import subprocess
 import sys
 import tomllib
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,6 +48,7 @@ DEFAULT_KNOWLEDGE = [
     "skills/optimize-z80/references/traps.md",
 ]
 REVIEW_KNOWLEDGE = DEFAULT_KNOWLEDGE[3:]
+SOURCE_SUFFIXES = {".c", ".h", ".inc", ".i"}
 MAX_EXCERPT_LINES = 400
 
 PROPOSE_TOOL = {
@@ -122,11 +126,13 @@ path); UNSURE if equivalence depends on facts you cannot see. Byte savings are i
 @dataclass
 class Target:
     name: str
-    build: str
-    map: str
-    size_symbol: str
-    origin: int
+    build: str = ""  # empty: measure what the previous target's build produced
+    map: str = ""
+    size_symbol: str = "__data_compiler_tail"
+    origin: int = 0
     binary: str = ""
+    files: str = ""  # glob of linked binaries measured by file size, one gated entry per file (overlays, banks)
+    maps: str = ""  # glob of maps whose routines become candidates too (the build must write them, e.g. z80asm -m)
 
 
 @dataclass
@@ -138,6 +144,8 @@ class Config:
     rules: str = ""
     toolchain: str = ""
     exclude_routines: list[str] = field(default_factory=list)
+    path_map: dict[str, str] = field(default_factory=dict)
+    python: str = ""  # interpreter for {python} in build and test commands; default: this one
     context_files: list[str] = field(default_factory=list)
     tests: list[str] = field(default_factory=list)
     knowledge: list[str] = field(default_factory=lambda: list(DEFAULT_KNOWLEDGE))
@@ -158,24 +166,34 @@ def load_config(path: Path) -> Config:
     targets = [
         Target(
             name=t["name"],
-            build=t["build"],
-            map=t["map"],
+            build=t.get("build", ""),
+            map=t.get("map", ""),
             size_symbol=t.get("size_symbol", "__data_compiler_tail"),
             origin=int(t.get("origin", 0)),
             binary=t.get("binary", ""),
+            files=t.get("files", ""),
+            maps=t.get("maps", ""),
         )
         for t in raw.get("targets", [])
     ]
     if not targets:
         raise SystemExit("config: at least one [[targets]] entry is required")
+    for t in targets:
+        if bool(t.map) == bool(t.files):
+            raise SystemExit(f"config: target {t.name} needs exactly one of map or files")
+    if not targets[0].map or not targets[0].build:
+        raise SystemExit("config: the first target needs a build command and a map; it ranks the routines")
+    root = (path.parent / proj.get("root", ".")).resolve()  # default: the directory holding the config
     cfg = Config(
-        name=proj.get("name") or Path(proj["root"]).name,
-        root=Path(proj["root"]).resolve(),
+        name=proj.get("name") or root.name,
+        root=root,
         editable=list(proj.get("editable", [])),
         targets=targets,
         rules=proj.get("rules", ""),
         toolchain=proj.get("toolchain", ""),
         exclude_routines=list(proj.get("exclude_routines", [])),
+        path_map=dict(proj.get("path_map", {})),
+        python=str(proj.get("python", "")),
         context_files=list(proj.get("context_files", [])),
         tests=list(proj.get("tests", [])),
     )
@@ -261,18 +279,32 @@ class TargetResult:
 
 
 def build_all(cfg: Config, wt: Path, cache: Path, python: str) -> dict[str, TargetResult]:
+    """Build and measure every target in order.
+
+    A target with an empty build measures what the previous build produced. A `files` target yields one
+    entry per matched file, keyed "<target>/<file name>", so each overlay or bank is gated on its own.
+    """
     results: dict[str, TargetResult] = {}
     for t in cfg.targets:
-        cmd = t.build.replace("{python}", python)
-        try:
-            cp = run(cmd, wt, timeout=cfg.build_timeout, shell=True)
-        except subprocess.TimeoutExpired:
-            results[t.name] = TargetResult(False, error=f"build timed out after {cfg.build_timeout}s")
-            break
-        if cp.returncode != 0:
-            tail = (cp.stdout + cp.stderr).strip().splitlines()[-40:]
-            results[t.name] = TargetResult(False, error="\n".join(tail))
-            break
+        if t.build:
+            cmd = t.build.replace("{python}", python)
+            try:
+                cp = run(cmd, wt, timeout=cfg.build_timeout, shell=True)
+            except subprocess.TimeoutExpired:
+                results[t.name] = TargetResult(False, error=f"build timed out after {cfg.build_timeout}s")
+                break
+            if cp.returncode != 0:
+                tail = (cp.stdout + cp.stderr).strip().splitlines()[-40:]
+                results[t.name] = TargetResult(False, error="\n".join(tail))
+                break
+        if t.files:
+            matches = sorted(p for p in wt.glob(t.files) if p.is_file())
+            if not matches:
+                results[t.name] = TargetResult(False, error=f"no files match {t.files}")
+                break
+            for p in matches:
+                results[f"{t.name}/{p.name}"] = TargetResult(True, p.stat().st_size)
+            continue
         tdir = cache / t.name
         tdir.mkdir(parents=True, exist_ok=True)
         map_src = wt / t.map
@@ -292,6 +324,10 @@ def build_all(cfg: Config, wt: Path, cache: Path, python: str) -> dict[str, Targ
             break
         results[t.name] = TargetResult(True, size, map_path=map_copy, binary_path=bin_copy)
     return results
+
+
+def missing_targets(cfg: Config, res: dict[str, TargetResult]) -> list[str]:
+    return [t.name for t in cfg.targets if t.name not in res and not any(k.startswith(t.name + "/") for k in res)]
 
 
 def run_tests(cfg: Config, wt: Path, python: str) -> str:
@@ -592,9 +628,96 @@ def promote(cache: Path, new: dict[str, TargetResult]) -> dict[str, TargetResult
     }
 
 
-def primary_routines(cfg: Config, res: dict[str, TargetResult]) -> list[mapfile.Routine]:
-    first = res[cfg.targets[0].name]
-    return mapfile.routines(mapfile.parse_map(first.map_path), cfg.sections)
+def primary_routines(cfg: Config, res: dict[str, TargetResult], wt: Path) -> list[mapfile.Routine]:
+    """Routines from the first target's map plus every `maps` glob, largest first.
+
+    A routine compiled into several maps (a helper shared by overlays) keeps its largest size.
+    """
+    first = cfg.targets[0]
+    sources: list[tuple[str, Path]] = [(first.map, res[first.name].map_path)]
+    for t in cfg.targets:
+        if t.maps:
+            sources += [(p.relative_to(wt).as_posix(), p) for p in sorted(wt.glob(t.maps)) if p.is_file()]
+    best: dict[tuple[str, str], mapfile.Routine] = {}
+    for map_rel, map_path in sources:
+        for r in mapfile.routines(mapfile.parse_map(map_path), cfg.sections):
+            r = source_path(cfg, map_rel, r, wt)
+            if r.lang == "c":
+                r = definition_line(cfg, wt, r)
+            key = (r.file, r.name)
+            if key not in best or r.size > best[key].size:
+                best[key] = r
+    return sorted(best.values(), key=lambda r: (-r.size, r.name))
+
+
+def source_path(cfg: Config, map_rel: str, r: mapfile.Routine, wt: Path | None = None) -> mapfile.Routine:
+    """Point a routine at its editable source.
+
+    project.path_map first; then a `../` location is resolved against the map's directory, or, when the
+    tree is available and that file is missing, with its leading `../` stripped (the compiler ran elsewhere).
+    """
+    file = r.file
+    for prefix, replacement in cfg.path_map.items():
+        if file.startswith(prefix):
+            file = replacement + file[len(prefix):]
+            break
+    if ".." in file.split("/"):
+        rel = posixpath.normpath(posixpath.join(posixpath.dirname(map_rel.replace("\\", "/")), file))
+        inside = rel != ".." and not rel.startswith("../") and not posixpath.isabs(rel)
+        stripped = re.sub(r"^(\.\./)+", "", file)
+        if inside and (wt is None or (wt / rel).is_file()):
+            file = rel
+        elif wt is not None and (wt / stripped).is_file():
+            file = stripped
+    return r if file == r.file else dataclasses.replace(r, file=file)
+
+
+def definition_line(cfg: Config, wt: Path, r: mapfile.Routine) -> mapfile.Routine:
+    """Trust the map line only if it names the function; otherwise find the definition (SDCC maps).
+
+    The map names the translation unit, so a function compiled through an #include of another
+    file is searched in that file's quoted includes next, then in every other source under the tree.
+    The result may be a non-editable file; the candidate filter drops it then.
+    """
+    path = wt / r.file
+    if not path.is_file():
+        return r
+    text = path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+    if 0 < r.line <= len(lines) and r.name in lines[r.line - 1]:
+        return r
+    line = _find_definition(lines, r.name)
+    if line:
+        return dataclasses.replace(r, line=line)
+    included = [path.parent / inc for inc in re.findall(r'#\s*include\s+"([^"]+)"', text)]
+    others = sorted(p for p in wt.rglob("*") if p.suffix.lower() in SOURCE_SUFFIXES and "build" not in p.parts)
+    for other in included + others:
+        if not other.is_file() or other == path:
+            continue
+        line = _find_definition(other.read_text(encoding="utf-8", errors="replace").splitlines(), r.name)
+        if line:
+            return dataclasses.replace(r, file=other.resolve().relative_to(wt.resolve()).as_posix(), line=line)
+    return r
+
+
+def _find_definition(lines: list[str], name: str) -> int:
+    """1-based line of `name(` that reaches `{` before `;` (a definition, not a prototype or call), else 0."""
+    state = {"block": False}
+    code = [_strip_code(line, state) for line in lines]
+    pattern = re.compile(rf"\b{re.escape(name)}\s*\(")
+    for i, line in enumerate(code):
+        m = pattern.search(line)
+        if not m:
+            continue
+        rest = line[m.end():]
+        for j in range(i, min(i + 20, len(code))):
+            text = rest if j == i else code[j]
+            brace, semi = text.find("{"), text.find(";")
+            if brace != -1 and (semi == -1 or brace < semi):
+                return i + 1
+            if semi != -1:
+                break
+    return 0
 
 
 def disasm_for(cfg: Config, res: dict[str, TargetResult], r: mapfile.Routine) -> str:
@@ -607,9 +730,9 @@ def disasm_for(cfg: Config, res: dict[str, TargetResult], r: mapfile.Routine) ->
     return ""
 
 
-def python_for_shell() -> str:
-    """This interpreter as a shell-safe token (8.3 short path on Windows, quoted if it has spaces)."""
-    exe = sys.executable
+def python_for_shell(cfg: Config) -> str:
+    """project.python or this interpreter as a shell-safe token (8.3 short path on Windows, quoted if it has spaces)."""
+    exe = cfg.python or sys.executable
     if os.name == "nt":
         import ctypes
 
@@ -623,8 +746,8 @@ def python_for_shell() -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--config", required=True, type=Path)
-    ap.add_argument("--iterations", type=int, default=10, help="routines to attempt (default 10)")
-    ap.add_argument("--max-usd", type=float, default=5.0, help="stop before spending more than this (default 5)")
+    ap.add_argument("--iterations", type=int, default=5, help="routines to attempt (default 5)")
+    ap.add_argument("--max-usd", type=float, default=2.0, help="stop before spending more than this (default 2)")
     ap.add_argument("--routine", action="append", default=[], help="restrict to these routine names")
     ap.add_argument("--dry-run", action="store_true", help="build baseline and list candidates; no API calls")
     ap.add_argument("--mock-script", type=Path, help="replay proposals/verdicts from JSON (offline testing)")
@@ -634,7 +757,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
-    python = python_for_shell()
+    python = python_for_shell(cfg)
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = args.runs_dir / f"{cfg.name.replace(' ', '_')}-{stamp}"
     log = Log(run_dir)
@@ -660,7 +783,7 @@ def main(argv: list[str] | None = None) -> int:
         cache = run_dir / "cache"
         res = build_all(cfg, wt.path, cache / "base", python)
         bad = [k for k, v in res.items() if not v.ok]
-        if bad or len(res) != len(cfg.targets):
+        if bad or missing_targets(cfg, res):
             name = bad[0] if bad else "?"
             log.line(f"BASELINE BUILD FAILED ({name}):\n{res[name].error if bad else ''}")
             stop_reason, exit_code = "baseline build failed", 2
@@ -668,14 +791,27 @@ def main(argv: list[str] | None = None) -> int:
         base_sizes = {k: v.size for k, v in res.items()}
         sizes = dict(base_sizes)
         log.line(f"baseline: {fmt_sizes(sizes)}  (total {sum(sizes.values())})")
-        rs = primary_routines(cfg, res)
+        rs = primary_routines(cfg, res, wt.path)
+        for t in cfg.targets:
+            if t.maps and not any(wt.path.glob(t.maps)):
+                log.line(f"warning: no maps match {t.maps}; those routines are guarded, not proposed")
         attempts: dict[str, int] = {}
         history: dict[str, list[str]] = {}
         queue = candidate_queue(cfg, rs, attempts, args.routine)
         log.line(f"{len(queue)} candidate routines; largest: " + ", ".join(f"{r.name} {r.size}B" for r in queue[:8]))
+        if not queue and rs:
+            outside = sorted({r.file for r in rs if not editable(cfg, r.file)})[:3]
+            log.line(f"no editable candidates; routine files outside project.editable include {', '.join(outside)}: set project.editable or project.path_map")
         if args.dry_run:
             for r in queue:
                 log.line(f"  {r.size:5d}B  {r.lang:3s} {r.name:32s} {r.file}:{r.line}")
+            for r in queue[:10]:  # prove the parser and the source lookup agree before anything is paid for
+                try:
+                    excerpt(cfg, wt.path, r, rs)
+                    status = "ok"
+                except Exception as exc:  # noqa: BLE001
+                    status = f"ERROR {exc}"
+                log.line(f"  excerpt {r.name}: {status}")
             stop_reason = "dry run"
             return 0
 
@@ -716,10 +852,12 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         new = build_all(cfg, wt.path, cache / "cand", python)
                         failed = [k for k, v in new.items() if not v.ok]
-                        if failed or len(new) != len(cfg.targets):
+                        changed = {k for k, v in new.items() if v.ok} != set(sizes)
+                        if failed or missing_targets(cfg, new) or changed:
                             name = failed[0] if failed else "?"
-                            outcome, detail = "NOBUILD", f"{name}: " + (new[name].error.splitlines()[-1] if failed and new[name].error else "")
-                            feedback = f"Build failed for target {name}:\n{new[name].error if failed else ''}\nFix it or decline."
+                            reason = new[name].error if failed else "the set of measured files changed" if changed else "target not built"
+                            outcome, detail = "NOBUILD", f"{name}: {reason.splitlines()[-1] if reason else ''}"
+                            feedback = f"Build failed for target {name}:\n{reason}\nFix it or decline."
                         else:
                             new_sizes = {k: v.size for k, v in new.items()}
                             deltas = {k: new_sizes[k] - sizes[k] for k in sizes}
@@ -750,8 +888,8 @@ def main(argv: list[str] | None = None) -> int:
                                         )
                                         sha = wt.commit(msg)
                                         sizes, res = new_sizes, promote(cache, new)
-                                        rs = primary_routines(cfg, res)
-                                        accepted_total += -deltas[cfg.targets[0].name]
+                                        rs = primary_routines(cfg, res, wt.path)
+                                        accepted_total += -total
                                         outcome, detail = "ACCEPT", f"{dtxt} commit {sha}"
                                         break
                     wt.revert()
@@ -774,7 +912,7 @@ def main(argv: list[str] | None = None) -> int:
             cost = agent.spent - spent0
             log.line(
                 f"[{it:03d}] {r.name:24s} {r.size:5d}B  {outcome:8s} {detail[:90]}  "
-                f"${cost:.2f}  saved {accepted_total}B on {cfg.targets[0].name}  spent ${agent.spent:.2f}"
+                f"${cost:.2f}  saved {accepted_total}B total  spent ${agent.spent:.2f}"
             )
             log.event(kind="result", routine=r.name, outcome=outcome, detail=detail, cost=cost, sizes=sizes)
     except ApiFatal as exc:
@@ -797,7 +935,7 @@ def main(argv: list[str] | None = None) -> int:
         if git(cfg.root, "status", "--porcelain") != primary_status:
             log.line("WARNING: primary checkout status changed during the run; inspect it.")
         spent = agent.spent if agent else 0.0
-        log.line(f"stop: {stop_reason}. accepted commits {n}, saved {accepted_total} bytes on {cfg.targets[0].name}, spent ${spent:.2f}")
+        log.line(f"stop: {stop_reason}. accepted commits {n}, saved {accepted_total} bytes in total, spent ${spent:.2f}")
         if n:
             log.line(f"review: git -C \"{cfg.root}\" log --stat {wt.base[:7]}..{wt.branch}")
         else:

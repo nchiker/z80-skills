@@ -298,3 +298,131 @@ def test_claude_call_uses_auto_choice_and_nudges_once():
     assert len(call.history) == 3 and call.history[1]["role"] == "assistant"
     assert call.cost == pytest.approx(2 * (1000 * 4 + 100 * 20) / 1e6) and c.spent == pytest.approx(call.cost)
     assert c.tokens["m"]["input_tokens"] == 2000 and c.tokens["m"]["output_tokens"] == 200
+
+
+def test_template_config_loads():
+    cfg = sa.load_config(HERE / "examples" / "template.toml")
+    assert cfg.editable and [t.name for t in cfg.targets] == ["main"]
+
+
+def test_path_map_points_generated_copies_at_sources(tmp_path):
+    cfg = _cfg(tmp_path, path_map={"build/generated/": ""})
+    r = mapfile.Routine("alpha", "_alpha", 0x6000, 16, "code_compiler", "build/generated/src/a.c", 12, "c")
+    assert sa.source_path(cfg, "out.map", r).file == "src/a.c"
+    assert sa.source_path(cfg, "out.map", mapfile.Routine("beta", "_beta", 0, 8, "code_user", "asm/x.asm", 1, "asm")).file == "asm/x.asm"
+
+
+SDCC_MAP = textwrap.dedent(
+    """\
+    _foo                            = $7000 ; addr, local, , app_c, code_compiler, ../src/app.c:2130
+    l_foo_00102                     = $7008 ; addr, local, , app_c, code_compiler, ../src/app.c:2140
+    foo_asm_label                   = $700C ; addr, local, , app_c, code_compiler, ../src/app.c:2150
+    _bar                            = $7020 ; addr, public, , app_c, code_compiler, ../src/app.c:2200
+    __code_compiler_tail            = $7050 ; const, public, def, , ,
+    """
+)
+
+
+def test_routines_sdcc_map_keeps_static_functions_and_skips_labels():
+    rs = mapfile.routines(mapfile.parse_map_text(SDCC_MAP), ["code_compiler"])
+    assert [(r.name, r.lang, r.size, r.file) for r in rs] == [
+        ("bar", "c", 0x30, "../src/app.c"),
+        ("foo", "c", 0x20, "../src/app.c"),
+    ]
+
+
+def test_source_path_resolves_map_relative_parent_dirs(tmp_path):
+    cfg = _cfg(tmp_path, targets=[sa.Target("t", "", "build/out.map", "__data_compiler_tail", 0)])
+    r = mapfile.Routine("foo", "_foo", 0, 8, "code_compiler", "../src/app.c", 1, "c")
+    assert sa.source_path(cfg, "build/out.map", r).file == "src/app.c"
+    escaped = mapfile.Routine("foo", "_foo", 0, 8, "code_compiler", "../../etc/x.c", 1, "c")
+    assert sa.source_path(cfg, "build/out.map", escaped).file == "../../etc/x.c"
+
+
+def test_definition_line_found_by_name_when_map_line_is_wrong(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.c").write_text(textwrap.dedent(
+        """\
+        static void about_open(void);  /* prototype */
+        /* about_open( in a comment */
+        static void run(void)
+        {
+            about_open();
+        }
+        static void about_open(void)
+        {
+            run();
+        }
+        """
+    ))
+    cfg = _cfg(tmp_path)
+    r = mapfile.Routine("about_open", "_about_open", 0, 8, "code_compiler", "src/app.c", 2130, "c")
+    assert sa.definition_line(cfg, tmp_path, r).line == 7
+    assert "run();" in sa.excerpt(cfg, tmp_path, sa.definition_line(cfg, tmp_path, r), [])
+    (src / "ovl.c").write_text("void apply(void) FASTCALL\n{\n}\n")
+    (src / "gui.c").write_text("void apply(void);\n#include \"ovl.c\"\n")
+    included = mapfile.Routine("apply", "_apply", 0, 8, "code_compiler", "src/gui.c", 99, "c")
+    assert (sa.definition_line(cfg, tmp_path, included).file, sa.definition_line(cfg, tmp_path, included).line) == ("src/ovl.c", 1)
+
+
+def test_project_python_overrides_interpreter(tmp_path):
+    assert sa.python_for_shell(_cfg(tmp_path, python="/opt/py 3/bin/python")) == '"/opt/py 3/bin/python"'
+    assert Path(sa.python_for_shell(_cfg(tmp_path)).strip('"')).samefile(sys.executable)
+
+
+def test_root_defaults_to_config_directory(tmp_path):
+    cfg = tmp_path / "shrink-agent.toml"
+    cfg.write_text('[project]\neditable = ["src/*.c"]\n[[targets]]\nname = "t"\nbuild = "make"\nmap = "out.map"\n')
+    loaded = sa.load_config(cfg)
+    assert loaded.root == tmp_path.resolve() and loaded.name == tmp_path.name
+
+
+def test_config_rejects_targets_without_map_or_files(tmp_path):
+    cfg = tmp_path / "c.toml"
+    cfg.write_text('[project]\neditable = ["src/*.c"]\n[[targets]]\nname = "t"\nbuild = "make"\n')
+    with pytest.raises(SystemExit, match="exactly one of map or files"):
+        sa.load_config(cfg)
+    cfg.write_text('[project]\neditable = ["src/*.c"]\n[[targets]]\nname = "t"\nfiles = "*.OVL"\n')
+    with pytest.raises(SystemExit, match="first target"):
+        sa.load_config(cfg)
+
+
+def test_files_target_measures_each_file_from_the_previous_build(tmp_path):
+    wt = tmp_path / "wt"
+    wt.mkdir()
+    (wt / "build.py").write_text(
+        "from pathlib import Path\n"
+        "Path('out.map').write_text('__data_compiler_tail = $0010 ; const, public, def, , ,\\n')\n"
+        "Path('A.OVL').write_bytes(b'x' * 7)\nPath('B.OVL').write_bytes(b'y' * 3)\n"
+    )
+    cfg = _cfg(wt, targets=[sa.Target("main", "{python} build.py", "out.map"), sa.Target("ovl", files="*.OVL")])
+    res = sa.build_all(cfg, wt, tmp_path / "cache", sa.python_for_shell(cfg))
+    assert {k: v.size for k, v in res.items()} == {"main": 16, "ovl/A.OVL": 7, "ovl/B.OVL": 3}
+    assert sa.missing_targets(cfg, res) == []
+    cfg = _cfg(wt, targets=[sa.Target("main", "{python} build.py", "out.map"), sa.Target("ovl", files="*.BIN")])
+    res = sa.build_all(cfg, wt, tmp_path / "cache", sa.python_for_shell(cfg))
+    assert not res["ovl"].ok and "no files match" in res["ovl"].error
+
+
+def test_source_path_strips_parent_dirs_when_the_compiler_ran_elsewhere(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.c").write_text("int f(void)\n{\n}\n")
+    r = mapfile.Routine("f", "_f", 0, 8, "code_compiler", "../src/a.c", 1, "c")
+    assert sa.source_path(_cfg(tmp_path), "build/ovl/X/x.map", r, tmp_path).file == "src/a.c"
+
+
+def test_maps_glob_adds_overlay_routines_keeping_the_largest(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.c").write_text("int foo(void)\n{\n}\nint bar(void)\n{\n}\n")
+    main_map = tmp_path / "out.map"
+    main_map.write_text("_foo = $6000 ; addr, public, , a_c, code_compiler, ../src/a.c:1\n"
+                        "__code_compiler_tail = $6010 ; const, public, def, , ,\n")
+    ovl = tmp_path / "build" / "ovl" / "X"
+    ovl.mkdir(parents=True)
+    (ovl / "x.map").write_text("_bar = $6800 ; addr, public, , a_c, code_compiler, ../src/a.c:4\n"
+                               "_foo = $6820 ; addr, public, , a_c, code_compiler, ../src/a.c:1\n"
+                               "__code_compiler_tail = $6834 ; const, public, def, , ,\n")
+    cfg = _cfg(tmp_path, targets=[sa.Target("main", "x", "out.map"), sa.Target("ovl", files="build/*.OVL", maps="build/ovl/*/*.map")])
+    rs = sa.primary_routines(cfg, {"main": sa.TargetResult(True, 0, map_path=main_map)}, tmp_path)
+    assert [(r.name, r.size, r.file, r.line) for r in rs] == [("bar", 0x20, "src/a.c", 4), ("foo", 0x14, "src/a.c", 1)]

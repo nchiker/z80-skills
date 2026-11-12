@@ -2,6 +2,10 @@
 
 Use this reference for Spectrum targets. For non-Spectrum Z80, load only the general Z80 technique files. For model-specific timing or paging claims, also load `zx-spectrum-models.md`.
 
+For repeated sampling/geometry kernels and bank visibility transactions, load
+[generated rendering](generated-rendering.md). For movement, entity lifecycle
+or collision boundaries, use [simulation and collision](simulation-and-collision.md).
+
 ## Contention
 
 48K contended RAM is 0x4000-0x7fff. The ULA steals cycles while drawing the display. Timing-critical code/data should prefer uncontended RAM when possible.
@@ -178,12 +182,95 @@ jitter; an unbounded `wait until A != $FF` loop is not a reliable raster lock.
 
 ## 128K / Paging
 
-Check:
+Normal paging uses this CPU map:
 
-- bank switch cost
-- double-buffer via screen pages
-- assets in banks vs resident pressure
-- code/data ownership across banks
-- interrupt code visibility across banks
+| CPU address | Physical storage |
+| --- | --- |
+| `$0000..$3FFF` | Selected ROM |
+| `$4000..$7FFF` | RAM bank 5 |
+| `$8000..$BFFF` | RAM bank 2 |
+| `$C000..$FFFF` | Selected RAM bank, 0..7 |
+
+Mapping bank 2 or 5 at `$C000` aliases existing RAM; it adds no capacity.
+Count physical allocations once, including code, stack and screen reservations.
+A loader or decompressor writing the alias can overwrite the fixed region.
+Source: [128 service manual, section 1.4](https://spectrumforeveryone.com/wp-content/uploads/2017/11/ZX-Spectrum-128-Service-Manual.pdf).
+
+Use the full `$7FFD` port address. Bits 0..2 select the bank at `$C000`, bit 3
+selects ULA screen bank 5 (0) or 7 (1), bit 4 selects ROM, and bit 5 locks
+paging until reset. Preserve unrelated bits and the software latch shadow;
+firmware-compatible paths use `BANKM` at `$5B5C`.
+Source: [128K paging](https://worldofspectrum.org/faq/reference/128kreference.htm).
+
+On +2A/+3, `$1FFD` bit 0 selects all-RAM configurations that replace the normal
+map, including low memory. In normal mode, its bit 2 combines with `$7FFD`
+bit 4 to select one of four ROMs. Preserve disk/printer control and firmware's
+`BANK678` shadow at `$5B67`. Normal-map residency assumptions do not hold in
+all-RAM mode. Source: [+3 memory management](https://worldofspectrum.net/ZXSpectrum128%2B3Manual/chapter8pt24.html).
+
+A bank-plus-offset handle needs the correct mapping before dereferencing;
+validate its bank and span, including wrap past `$FFFF`. For transfers and
+foreground/ISR paging, use the existing
+[simultaneous-visibility contract](generated-rendering.md#paging-must-preserve-simultaneous-visibility).
+For model-dependent contention and read-port hazards, use
+[model rules](zx-spectrum-models.md#paging-discipline); for startup and banked
+packaging, use [loader/CRT rules](toolchain.md#classic-128k-banked-programs).
 
 Do not propose bank tricks for 48K-only projects.
+
+### Page-local history and screen flipping
+
+MEDIUM for 128K rendering when screen banks 5 and 7 are available. The page
+selected for CPU drawing and the page selected for ULA display are distinct
+state: changing the RAM bank at $C000 does not itself choose the displayed
+screen. Keep history for the actual back page, whose last rendered scene may
+be two frames old. A single previous-frame position leaves stale objects when
+that page returns. Initialize both pages and their histories; reset both on
+scene/background invalidation.
+
+Restore or redraw old bounds using that page's history, render the new scene,
+then update that page's history. Use the existing
+[background and overlap rules](#incremental-redraw-and-scrolling); clearing
+old pixels to black is valid only for a proven black background. Flip only a
+fully completed page in a verified
+[model-safe window](zx-spectrum-models.md#frame-window-planning). Preserve the
+paging latch's other bits and its software shadow, respect paging lock, and
+keep code, stack and ISR data visible through every mapping change. Coordinate
+ISR paging with the renderer; a display flip does not require mapping out the
+code executing it.
+
+The saving is incremental reuse of each bank's scene; count duplicate history,
+restoration work and paging costs. Reject when banks are unavailable, the
+mapping/interrupt contract is unproved, or dirty work exceeds full redraw.
+Full redraw of each back page is the fallback. Vanilla 48K has no hardware
+screen-page flip. Inspiration: [Oddbit's page-switching discussion](https://www.oddbit-retro.org/retro-game-programming-tips-part-2-page-switching/).
+
+This deterministic host model restores a single-cell sprite over a patterned
+background. Each sequence starts with both pages reset; it tests repeated
+flips, page revisits and disappearance against a full-render oracle:
+
+```python
+# example: page-history
+background = list(range(16))
+for positions in ((2, 9, 2, None, 4, None, 2, 9, None), (None, 4, 2, None)):
+    pages = {bank: background.copy() for bank in (5, 7)}
+    history = {5: None, 7: None}
+    displayed, back = 5, 7
+    for position in positions:
+        old = history[back]
+        if old is not None:
+            pages[back][old] = background[old]
+        if position is not None:
+            pages[back][position] = 255
+        history[back] = position
+        expected = background.copy()
+        if position is not None:
+            expected[position] = 255
+        assert pages[back] == expected
+        displayed, back = back, displayed
+        assert pages[displayed] == expected
+```
+
+`scripts/test_technique_examples.py` executes this model. It verifies history
+ownership and scene output, not ULA behavior, paging-latch writes, vblank
+timing, or ISR safety; those require the deployed model's emulator/hardware.

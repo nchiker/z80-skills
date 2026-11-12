@@ -1,0 +1,32 @@
+# shrink-agent configuration template. Copy it to <project>/shrink-agent.toml
+# and set every value. Relative paths are resolved from project.root. See the
+# README for the optional [agent] and [prices] tables; their defaults are fine.
+
+[project]
+name = "myproject"
+# root = "/path/to/project"         # primary checkout, never edited; default: this file's directory
+editable = ["src/*.c", "src/*.asm"]  # globs the proposer may edit; keep timing-critical drivers out
+# python = "/usr/bin/python3"        # interpreter for {python}; set it when the build needs packages the venv lacks
+exclude_routines = []
+# path_map = { "build/generated/" = "" }  # map locations of generated copies -> editable source
+toolchain = "z88dk zcc +zx with sccz80, -O3 --opt-code-size"  # facts given to both models
+rules = """
+- Constraints every edit must respect: memory ceilings, protocol strings, timing loops.
+"""
+tests = []                           # run after a size gain, e.g. the project's overlay or layout size checks
+
+[[targets]]
+name = "main"
+build = "make"                       # run inside the disposable worktree; {python} expands to the interpreter
+map = "build/main.map"               # linker map written by the build
+size_symbol = "__data_compiler_tail" # end of code+data; __BSS_END_tail when resident memory is the pressure
+origin = 24000                       # code origin: size = size_symbol - origin
+# binary = "build/main_CODE.bin"     # optional: lets the model see the compiled routine
+
+# Overlays or banks linked apart from the main map: measured by file size, each one
+# gated on its own. Empty build = produced by the previous target's build.
+# [[targets]]
+# name = "overlay"
+# build = ""
+# files = "build/*.OVL"
+# maps = "build/ovl/*/*.map"        # optional: propose overlay routines too (the overlay link must write maps)

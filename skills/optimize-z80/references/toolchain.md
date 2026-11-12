@@ -65,6 +65,23 @@ ROM, resident RAM, boot time and cold-path functionality; keep the original
 CRT/sections when those invariants cannot be proved.
 Source: [z88dk runtime and section guidance](https://github.com/z88dk/z88dk/wiki/WritingOptimalCode).
 
+### Classic 128K Banked Programs
+
+[z88dk's Spectrum platform documentation](https://github.com/z88dk/z88dk/wiki/Platform---Sinclair-ZX-Spectrum#128k-program-generation)
+documents classic `+zx` banked code/data and banked TAP packaging; Next uses
+`+zxn`. Its classic-library `#pragma bank` convention is not a universal
+SDCC/newlib ABI. Verify the installed CRT, compiler, sections, generated calls
+and loader before choosing a recipe. Count resident glue and padding as well
+as bank contents; retain an existing runtime that already fits the layout.
+
+Record boot mode, ROM, paging-lock state, loaded bank ranges, entry map, stack,
+interrupt state and return-to-firmware policy. A locked 48 BASIC entry cannot
+be unlocked by another write. A snapshot starting after loading does not prove
+that a TAP/TZX loader loads every bank or survives its own writes. Validate
+the delivery artifact from its real entry path, including failure exits and
+final mapping. Use the [hardware paging contract](zx-spectrum-hardware.md#128k--paging)
+for latch fields, physical aliases and extended modes.
+
 ## z88dk-copt
 
 Use as a possible MEDIUM lane when repeated generated-ASM patterns are proven.
@@ -82,6 +99,9 @@ Do not propose copt from one isolated pattern.
 ## MDL Z80 Optimizer
 
 Use as optional external evidence, not as a blind patcher.
+Options below were checked against
+[santiontanon/mdlz80optimizer](https://github.com/santiontanon/mdlz80optimizer/tree/3004430f67f17013dc47127fd14d8640fbf08b6f)
+(Apache-2.0).
 
 Useful concepts:
 
@@ -91,7 +111,20 @@ Useful concepts:
 - hotspot execution when harness exists
 - peephole pattern discovery
 
-Reject whole-file autopatching unless user explicitly asks and validation is strong.
+Before trusting a run:
+
+- Pass `-cpu z80`, or `-cpu z80n` for Next; the default `z80msx` uses MSX timing.
+- Pass the source `-dialect` (`sjasmplus`, `pasmo`, `sdcc`, `sdasz80`, ...); there is no z88dk z80asm dialect. Only `sdcc` and `sdasz80` exclude the patterns tagged `sdcc-unsafe`.
+- Pass `-po-ldo` while code still changes: it disables rewrites that depend on current label values.
+- Mark self-modified instructions, unresolved `jp (hl)` tables and protected blocks with `mdl:self-modifying`, `mdl:jumptable` and `mdl:no-opt-start`/`mdl:no-opt-end`.
+- Review `-po` console proposals (and `-popotential`) one by one against `asm-micro.md` and the routine contract.
+- `-so` accepts a result after `-so-checks` random tests (10000 by default). Treat it as a candidate that still needs proof, not as equivalence.
+
+[`pbo-patterns.txt`](https://github.com/santiontanon/mdlz80optimizer/blob/3004430f67f17013dc47127fd14d8640fbf08b6f/src/main/resources/data/pbo-patterns.txt)
+holds 187 rewrites, each with its dead-register, dead-flag and stack
+constraints; consult it as a rule source for micro proposals.
+
+Reject whole-file autopatching, including `-asm` output (it expands macros and includes), unless user explicitly asks and validation is strong.
 
 ## Other Tools
 

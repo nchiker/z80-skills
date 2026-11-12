@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
+
+COMMON_SCRIPTS = Path(__file__).resolve().parents[2] / "shrink-z80" / "scripts"
+if str(COMMON_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(COMMON_SCRIPTS))
+
+from scan_common import EXCLUDE_DIRS  # noqa: E402
 
 STATIC_C_FUNC = re.compile(
     r"(?m)^\s*static\s+(?!const\b)(?:[\w_]+\s+|\*|\s)+?"
@@ -12,7 +19,7 @@ STATIC_C_FUNC = re.compile(
 )
 
 PATTERNS = [
-    ("asm_tail_call", re.compile(r"\bcall\s+([\w.$@?]+)\s*(?:;[^\n]*)?\n\s*ret\b", re.I), "SAFE", "call+ret can often become jp"),
+    ("asm_tail_call", re.compile(r"\bcall\s+([\w.$@?]+)\s*(?:;[^\n]*)?\n\s*ret\b", re.I), "CHECK", "call+ret may become jp; prove stack and callee (asm-micro.md)"),
     ("asm_block_repeat", re.compile(r"\b(ldir|otir|cpir|inir|indr|otdr)\b", re.I), "MEDIUM", "block repeat may be size-good but not speed-best"),
     ("asm_block_single", re.compile(r"\b(ldi|ldd|cpi|cpd|ini|ind|outi|outd)\b", re.I), "CHECK", "single-step block op; compare setup cost versus loop alternatives"),
     ("asm_index_regs", re.compile(r"\b(?:ix|iy)(?:[+-]|\s*\+|\s*\-|\b)", re.I), "CHECK", "IX/IY access costs prefix bytes/t-states"),
@@ -39,7 +46,7 @@ PATTERNS = [
 ]
 
 EXTS = {".c", ".h", ".asm", ".s", ".inc", ".lst", ".lis"}
-IGNORE_DIRS = {".git", ".hg", ".svn", "__pycache__", "node_modules"}
+IGNORE_DIRS = EXCLUDE_DIRS | {".mex"}
 
 
 def is_ignored(path: Path, root: Path, ignore_dirs: set[str]) -> bool:
